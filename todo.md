@@ -1,0 +1,6 @@
+- [ ] Cache TODO lists using raycast cache. Disallow change actions until cache is verified.
+- [ ] Rewrite todo list registration storage. Do not use an array of registered todos, instead store each under it's specific key.
+  - easier to manage, add, remove, check if it exists.
+  - Check backend/files.ts
+- [ ] Allow default todo that is completely managed by the raycast cache
+- [ ] Conflict resolution: check when the file is cached and when it was last changed
