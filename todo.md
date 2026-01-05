@@ -1,3 +1,8 @@
-- [ ] Cache TODO lists using raycast cache. Disallow change actions until cache is verified.
+- [x] Cache TODO lists using raycast cache. Disallow change actions until cache is verified.
 - [ ] Allow default todo that is completely managed by the raycast cache
-- [ ] Conflict resolution: check when the file is cached and when it was last changed
+- [x] Conflict resolution: check when the file is cached and when it was last changed
+- [ ] Parse headlines as sections
+- [ ] Preserve additional metadata, tags, description, priority, etc
+- [x] Do not add frontmatter if not already present? (check for undefined)
+- [ ] Allow crossing out todos, i.e marking them as invalid
+- [ ] Listen to file changes, update raycast live if file changes from other source.

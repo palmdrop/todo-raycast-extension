@@ -10,9 +10,13 @@ export const getTodoItems = async (name: string) => {
   return todoItems;
 };
 
-// TODO: make sure two writes do not occur at the same time!
+let writeLock: number | null = null;
 export const updateTodoItems = async (name: string, todoItems: TodoItem[]) => {
-  if (!data.exists(name)) throw new Error(`Todo list "${name}" does not exist`);
+  const now = Date.now();
+  writeLock = now;
+
+  if (!(await data.exists(name)))
+    throw new Error(`Todo list "${name}" does not exist`);
 
   // TODO: this needs to be sync to allow cleanup write
   // NOTE: can be made sync by caching the filePath and convert read/write to sync
@@ -25,7 +29,12 @@ export const updateTodoItems = async (name: string, todoItems: TodoItem[]) => {
     todoItems
   );
 
-  await data.updateTodoList(name, newContent);
+  // Prevents concurrent writes... kind of
+  if (writeLock === now) {
+    await data.updateTodoList(name, newContent);
+  }
+
+  writeLock = null;
 };
 
 export const getLatestTodoName = async () => {

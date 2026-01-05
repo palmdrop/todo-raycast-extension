@@ -17,7 +17,10 @@ const getFrontmatter = (content: string) => {
 
 const todoItemToMarkdown = (todoItem: TodoItem) => {
   // TODO: does not yet support description
-  return `- [${todoItem.checked ? 'X' : ' '}] ${todoItem.content}`;
+  return (
+    `- [${todoItem.checked ? 'X' : ' '}] ${todoItem.content}` +
+    (todoItem.description ? `\n${todoItem.description}` : '')
+  );
 };
 
 // TODO: should this return frontmatter directly?
@@ -27,14 +30,26 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
   const todoItems: TodoItem[] = [];
 
   const lines = contentWithoutFrontmatter.split('\n');
-  const rest: { line: string; index: number }[] = [];
+  const before: string[] = [];
+  const after: string[] = [];
 
+  let currentPool: string[] = [];
   for (const line of lines) {
     const match = line.match(TODO_REGEX);
 
     if (!match) {
-      rest.push({ line, index: lines.length });
+      if (!todoItems.length) {
+        before.push(line);
+      } else {
+        currentPool.push(line);
+      }
+
       continue;
+    }
+
+    if (currentPool.length && todoItems.length) {
+      todoItems.at(-1)!.description = currentPool.join('\n');
+      currentPool = [];
     }
 
     const checked = !!(
@@ -45,10 +60,19 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
     todoItems.push({
       checked,
       content: match[2],
+      description: '',
     });
   }
 
-  return { todoItems, rest };
+  if (currentPool.length) {
+    const blocks = currentPool.join('\n').split('\n\n');
+    todoItems.at(-1)!.description = blocks[0];
+    after.push(...blocks.slice(1));
+  }
+
+  console.log(todoItems, before, after);
+
+  return { todoItems, before, after };
 };
 
 export const convertTodoItemsToMarkdown = (
@@ -57,15 +81,17 @@ export const convertTodoItemsToMarkdown = (
 ) => {
   const frontmatter = getFrontmatter(currentMarkdown);
 
-  // const { rest } = parseTodoItemsFromMarkdown(currentMarkdown);
-  // TODO: merge with "rest" using line indices. Try to reconcile somehow?
-  // NOTE: probably will be very difficult... maybe just append it at the bottom. Force user to use correct format
+  const { after, before } = parseTodoItemsFromMarkdown(currentMarkdown);
 
   const content =
-    '---\n' +
-    frontmatter +
-    '\n---\n\n' +
-    todoItems.map(todoItemToMarkdown).join('\n');
+    // Frontmatter
+    (frontmatter ? `---\n${frontmatter}\n---\n\n` : '') +
+    // Before
+    (before.length ? before.join('\n') + '\n' : '') +
+    // Items
+    todoItems.map(todoItemToMarkdown).join('\n') +
+    // After
+    (after.length ? after.join('\n') : '');
 
   return content;
 };
