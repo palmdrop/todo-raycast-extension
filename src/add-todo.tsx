@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from 'react';
 import fs from 'fs';
 import { FormValidation, useForm } from '@raycast/utils';
-import { addExistingTodoList, createTodoList } from './backend/data';
+import { addExistingTodoList, createTodoList } from './core/data';
 import ListTodos from './list-todos';
 
 type Values = {
@@ -33,6 +33,8 @@ export default function Command() {
       onSubmit: async (values) => {
         const { name, files } = values;
         try {
+          // TODO: convert to using the useTodo hook... only modify state using this hook
+          // NOTE: or should useTodo only handle a single todo? let other functions manage creating, listing, etc
           if (directorySelected) {
             const fileName = getFileNameFromTodoName(name);
             await createTodoList(files[0], fileName, name);

@@ -30,7 +30,16 @@
       "title": "View Todo List",
       "subtitle": "Todo",
       "description": "Views the currently active todo list. The active todo list can be changed using the \"Change active todo list\" command.",
-      "mode": "view"
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "name",
+          "title": "Name",
+          "description": "The name of the todo list to view.",
+          "type": "text",
+          "placeholder": "name..."
+        }
+      ]
     }
   ],
   "dependencies": {

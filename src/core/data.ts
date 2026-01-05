@@ -7,92 +7,47 @@ type TodoListData = {
   filePath: string;
 };
 
-type RegisteredTodos = TodoListData[];
+const TODO_KEY_PREFIX = 'TODO';
+const LATEST_TODO_KEY = 'LATEST_TODO';
 
-const REGISTERED_TODOS_KEY = 'registered-todos';
+const getKey = (name: string) =>
+  `${TODO_KEY_PREFIX}_${name.replaceAll(' ', '_')}`;
 
-export const exists = async ({
-  name,
-  path,
-}: {
-  name?: string;
-  path?: string;
-}) => {
-  const storedData = await LocalStorage.getItem<string>(REGISTERED_TODOS_KEY);
-  const registeredTodos: RegisteredTodos = storedData
-    ? JSON.parse(storedData)
-    : [];
-
-  return (
-    registeredTodos.find(
-      (todo) => todo.name === name || todo.filePath === path
-    ) !== undefined
-  );
+const get = async (name: string) => {
+  const storedData = await LocalStorage.getItem<string>(getKey(name));
+  return storedData ? JSON.parse(storedData) : null;
 };
 
+//
+export const exists = async (name: string) => {
+  return !!(await LocalStorage.getItem<string>(getKey(name)));
+};
+
+// TODO: warn user if they register a todo with a path that already exists
 const register = async (filePath: string, name: string) => {
-  const storedData = await LocalStorage.getItem<string>(REGISTERED_TODOS_KEY);
-
-  const registeredTodos: RegisteredTodos = storedData
-    ? JSON.parse(storedData)
-    : [];
-
-  if (await exists({ name, path: filePath })) {
-    throw new Error(
-      `Todo list with name "${name}" or path "${filePath}" already exists`
-    );
+  if (await exists(name)) {
+    throw new Error(`Todo list with name "${name}"`);
   }
 
-  registeredTodos.push({
-    name,
-    filePath,
-  });
-
-  console.log('REGISTER', REGISTERED_TODOS_KEY, registeredTodos);
-  await LocalStorage.setItem(
-    REGISTERED_TODOS_KEY,
-    JSON.stringify(registeredTodos)
-  );
+  await LocalStorage.setItem(getKey(name), JSON.stringify({ name, filePath }));
 };
 
 const unregister = async (name: string) => {
-  const storedData = await LocalStorage.getItem(REGISTERED_TODOS_KEY);
-  if (!storedData) {
-    return;
-  }
-
-  const registeredTodos: RegisteredTodos = JSON.parse(storedData as string);
-
-  const index = registeredTodos.findIndex((todo) => todo.name === name);
-  if (index === -1) {
+  if (!(await exists(name))) {
     throw new Error(`Todo list with name "${name}" does not exist`);
   }
 
-  registeredTodos.splice(index, 1);
-
-  console.log('UNREGISTER', REGISTERED_TODOS_KEY, registeredTodos);
-  await LocalStorage.setItem(
-    REGISTERED_TODOS_KEY,
-    JSON.stringify(registeredTodos)
-  );
+  await LocalStorage.removeItem(getKey(name));
 };
 
 const list = async () => {
-  const storedData = await LocalStorage.getItem(REGISTERED_TODOS_KEY);
-  console.log('LISTING', storedData);
-  const registeredTodos: RegisteredTodos = storedData
-    ? JSON.parse(storedData as string)
-    : [];
-  return registeredTodos;
-};
+  const items = await LocalStorage.allItems();
 
-const get = async (name: string) => {
-  const storedData = await LocalStorage.getItem(REGISTERED_TODOS_KEY);
-  const registeredTodos: RegisteredTodos = storedData
-    ? JSON.parse(storedData as string)
-    : [];
+  const todoItems = Object.entries(items)
+    .filter(([key]) => key.startsWith(TODO_KEY_PREFIX))
+    .map(([, value]) => JSON.parse(value) as TodoListData);
 
-  return registeredTodos.find((todo) => todo.name === name);
+  return todoItems;
 };
 
 const read = async (name: string) => {
@@ -111,6 +66,10 @@ const write = async (name: string, content: string) => {
   }
 
   await fs.writeFile(todo.filePath, content, 'utf-8');
+};
+
+const setLatest = async (name: string) => {
+  await LocalStorage.setItem(LATEST_TODO_KEY, name);
 };
 
 const isFileValid = (filePath: string) => {
@@ -201,8 +160,6 @@ export const createTodoList = async (
   await register(filePath, name);
 };
 
-// NOTE: rewrite... this code does not really care that we are dealing with TODOs... could be anything
-// NOTE: also store each list data as one separate key in LocalStorage?
 export const removeTodoList = async (name: string) => {
   await unregister(name);
 };
@@ -212,9 +169,16 @@ export const listTodoLists = async () => {
 };
 
 export const readTodoList = async (name: string) => {
-  return await read(name);
+  const todo = await read(name);
+  await setLatest(name);
+  return todo;
 };
 
 export const updateTodoList = async (name: string, content: string) => {
+  await setLatest(name);
   return await write(name, content);
+};
+
+export const getLatestTodoName = async () => {
+  return await LocalStorage.getItem<string>(LATEST_TODO_KEY);
 };

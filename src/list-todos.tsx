@@ -4,12 +4,16 @@ import {
   Action,
   Icon,
   openExtensionPreferences,
+  useNavigation,
+  LaunchType,
 } from '@raycast/api';
-import { listTodoLists, removeTodoList } from './backend/data';
+import { listTodoLists, removeTodoList } from './core/data';
 import { useCachedPromise } from '@raycast/utils';
+import ViewTodo from './view-todo';
 
 export default function Command() {
   const todos = useCachedPromise(listTodoLists);
+  const { push } = useNavigation();
 
   return (
     <List
@@ -30,6 +34,17 @@ export default function Command() {
           icon={Icon.Ticket}
           actions={
             <ActionPanel>
+              <Action
+                title="View Todo List"
+                onAction={() => {
+                  push(
+                    <ViewTodo
+                      arguments={{ name: todo.name }}
+                      launchType={LaunchType.UserInitiated}
+                    />
+                  );
+                }}
+              />
               <Action
                 title="Unregister Todo List"
                 onAction={async () => {

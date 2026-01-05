@@ -1,8 +1,12 @@
-import { Action, ActionPanel, Color, Icon, List } from '@raycast/api';
-import * as backend from './backend'; // TODO: rename to "core"
-import { useEffect, useState } from 'react';
-import { TodoItem } from './backend/types';
-import { debounce } from './utils/debounce';
+import {
+  Action,
+  ActionPanel,
+  Color,
+  Icon,
+  LaunchProps,
+  List,
+} from '@raycast/api';
+import { useTodo } from './todo/useTodo';
 
 const checkedIcon = {
   source: Icon.CircleFilled,
@@ -14,62 +18,8 @@ const uncheckedIcon = {
   tintColor: Color.Red,
 };
 
-// TODO: make abortable
-const read = async (name: string) => {
-  return await backend.getTodoItems(name);
-};
-
-const write = async (name: string, todoItems: TodoItem[]) => {
-  return await backend.updateTodoItems(name, todoItems);
-};
-
-const writeDebounced = debounce(write, 1000);
-
-const ViewTodo = () => {
-  const name = 'working memory todo';
-  const [todoItems, setTodoItems] = useState<TodoItem[]>();
-
-  const toggleChecked = (index: number) => {
-    if (!todoItems) return;
-
-    if (todoItems.length <= index) {
-      throw new Error('No todo item at index ' + index);
-    }
-
-    setTodoItems((items) => {
-      if (!items) return undefined;
-
-      const newItems = items.map((item, i) =>
-        index !== i
-          ? item
-          : {
-              ...item,
-              checked: !item.checked,
-            }
-      );
-
-      writeDebounced(name, newItems);
-
-      return newItems;
-    });
-  };
-
-  useEffect(() => {
-    let aborted = false;
-
-    read(name).then((items) => {
-      if (aborted) return;
-      setTodoItems(items);
-    });
-
-    return () => {
-      aborted = true;
-      writeDebounced.cancel();
-
-      if (!todoItems) return;
-      write(name, todoItems);
-    };
-  }, [name]);
+const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
+  const { items: todoItems, toggleItem } = useTodo(props.arguments.name);
 
   return (
     <List>
@@ -83,7 +33,7 @@ const ViewTodo = () => {
               <ActionPanel.Section>
                 <Action
                   title={item.checked ? 'Uncheck' : 'Check'}
-                  onAction={() => toggleChecked(i)}
+                  onAction={() => toggleItem(i)}
                 />
               </ActionPanel.Section>
             </ActionPanel>
