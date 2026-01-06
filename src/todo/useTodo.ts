@@ -84,23 +84,113 @@ export const useTodo = (initialName?: string) => {
     [commit, revaluate, todoItems]
   );
 
-  const toggleItem = useCallback(
-    async (index: number) => {
-      update((items) => {
-        if (!items) return null;
+  const updateItem = useCallback(
+    async (
+      item: Partial<TodoItem> | ((item: TodoItem) => Partial<TodoItem>),
+      index: number
+    ) => {
+      update((previousItems) => {
+        if (!previousItems) return null;
 
-        if (items.length <= index) {
+        if (previousItems.length <= index) {
           throw new Error('No todo item at index ' + index);
         }
 
-        const newItems = items.map((item, i) =>
+        const newItems = previousItems.map((existingItem, i) =>
           index !== i
-            ? item
+            ? existingItem
             : {
-                ...item,
-                checked: !item.checked,
+                ...existingItem,
+                ...(typeof item === 'function' ? item(existingItem) : item),
               }
         );
+
+        return newItems;
+      });
+    },
+    [update]
+  );
+
+  const toggleItem = useCallback(
+    async (index: number) => {
+      updateItem(
+        (item) => ({
+          ...item,
+          checked: !item.checked,
+        }),
+        index
+      );
+    },
+    [update]
+  );
+
+  const removeItem = useCallback(
+    async (index: number) => {
+      update((previousItems) => {
+        // NOTE: code duplication... fix
+        if (!previousItems) return null;
+
+        if (previousItems.length <= index) {
+          throw new Error('No todo item at index ' + index);
+        }
+
+        return previousItems.filter((_, i) => i !== index);
+      });
+    },
+    [update]
+  );
+
+  const addItem = useCallback(
+    async (item: TodoItem, index?: number, after?: boolean) => {
+      update((previousItems) => {
+        if (!previousItems?.length) return [item];
+
+        if (typeof index === 'undefined') {
+          return [...(previousItems ?? []), item];
+        }
+
+        if (index < 0 || index > previousItems.length) {
+          throw new Error('Index out of bounds');
+        }
+
+        const newItems = [...previousItems];
+        newItems.splice(index + (after ? 1 : 0), 0, item);
+
+        return newItems;
+      });
+    },
+    [update]
+  );
+
+  const createItem = useCallback(
+    async (initialFields?: Partial<TodoItem>) => {
+      const item: TodoItem = {
+        checked: false,
+        content: '',
+        description: '',
+        due: null,
+        ...(initialFields ?? {}),
+      };
+
+      return item;
+    },
+    [addItem]
+  );
+
+  const swapItems = useCallback(
+    async (indexA: number, indexB: number) => {
+      update((previousItems) => {
+        if (!previousItems) return null;
+
+        if (previousItems.length <= indexA || previousItems.length <= indexB) {
+          throw new Error('Index out of bounds');
+        }
+
+        const newItems = [...previousItems];
+        [newItems[indexA], newItems[indexB]] = [
+          newItems[indexB],
+          newItems[indexA],
+        ];
 
         return newItems;
       });
@@ -115,5 +205,10 @@ export const useTodo = (initialName?: string) => {
     commit,
     update,
     toggleItem,
+    updateItem,
+    removeItem,
+    addItem,
+    createItem,
+    swapItems,
   };
 };

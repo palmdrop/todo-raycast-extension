@@ -2,6 +2,14 @@ import { TodoItem } from './types';
 
 const TODO_REGEX = /^- \[(x|X| )?\] (.*)/;
 
+const INDENT = '  ';
+const PROPERTY_PREFIX = '* ';
+
+type AdditionalProperties = keyof Omit<
+  TodoItem,
+  'content' | 'checked' | 'description'
+>;
+
 // TODO: store list data in the frontmatter, but make sure to preserve existing fields
 // TODO: and update "updatedAt" fields
 const removeFrontmatter = (content: string) => {
@@ -16,10 +24,26 @@ const getFrontmatter = (content: string) => {
 };
 
 const todoItemToMarkdown = (todoItem: TodoItem) => {
-  // TODO: does not yet support description
+  const printProperty = (key: AdditionalProperties) => {
+    const value = todoItem[key];
+    if (!value) return undefined;
+    return `${INDENT}${PROPERTY_PREFIX}${key}: ${value.toString()}`;
+  };
+
+  const properties = (
+    Object.keys(todoItem).filter(
+      (key) => !['content', 'checked', 'description'].includes(key)
+    ) as AdditionalProperties[]
+  )
+    .map(printProperty)
+    .filter(Boolean)
+    .join('\n');
+
   return (
     `- [${todoItem.checked ? 'X' : ' '}] ${todoItem.content}` +
-    (todoItem.description ? `\n${todoItem.description}` : '')
+    (todoItem.description ? `\n${INDENT}${todoItem.description}` : '') +
+    (properties ? `\n${properties}` : '') +
+    '\n'
   );
 };
 
@@ -32,6 +56,45 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
   const lines = contentWithoutFrontmatter.split('\n');
   const before: string[] = [];
   const after: string[] = [];
+
+  const addAdditionalDataToItem = (
+    todoItem: TodoItem,
+    additionalData: string[]
+  ) => {
+    if (!additionalData.length) return;
+
+    const handleProperty = (key: AdditionalProperties, value: string) => {
+      if (!value?.trim().length) return undefined;
+
+      switch (key) {
+        case 'due':
+          // TODO: show warning/error if due date cannot be parsed
+          return (todoItem.due = new Date(value));
+        default:
+          return undefined;
+      }
+    };
+
+    const description: string[] = [];
+    for (const line of additionalData) {
+      const trimmed = line.trim();
+
+      const colonIndex = trimmed.indexOf(':');
+      if (trimmed.startsWith(PROPERTY_PREFIX) && colonIndex !== -1) {
+        const key = trimmed.slice(PROPERTY_PREFIX.length, colonIndex).trim();
+        const value = trimmed.slice(colonIndex + 1).trim();
+
+        // NOTE: This looks ugly
+        if (!handleProperty(key as AdditionalProperties, value)) {
+          description.push(trimmed);
+        }
+      } else {
+        description.push(trimmed);
+      }
+    }
+
+    todoItem.description = description.join('\n').trim();
+  };
 
   let currentPool: string[] = [];
   for (const line of lines) {
@@ -48,7 +111,7 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
     }
 
     if (currentPool.length && todoItems.length) {
-      todoItems.at(-1)!.description = currentPool.join('\n');
+      addAdditionalDataToItem(todoItems.at(-1)!, currentPool);
       currentPool = [];
     }
 
@@ -61,16 +124,16 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
       checked,
       content: match[2],
       description: '',
+      due: null,
     });
   }
 
   if (currentPool.length) {
+    // NOTE: excessive joins and splits
     const blocks = currentPool.join('\n').split('\n\n');
-    todoItems.at(-1)!.description = blocks[0];
+    addAdditionalDataToItem(todoItems.at(-1)!, blocks[0].split('\n'));
     after.push(...blocks.slice(1));
   }
-
-  console.log(todoItems, before, after);
 
   return { todoItems, before, after };
 };
