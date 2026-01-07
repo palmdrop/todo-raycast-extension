@@ -200,19 +200,29 @@ export const useTodo = (initialName?: string) => {
     [update]
   );
 
-  const createItem = useCallback(
-    async (initialFields?: Partial<TodoItem>) => {
-      const item: TodoItem = {
-        checked: false,
-        content: '',
-        description: '',
-        due: null,
+  const createItem = useCallback(async (initialFields?: Partial<TodoItem>) => {
+    const item: TodoItem = {
+      checked: false,
+      content: '',
+      description: '',
+      due: null,
+      ...(initialFields ?? {}),
+    };
+
+    return item;
+  }, []);
+
+  const createSection = useCallback(
+    async (initialFields?: Partial<TodoSection>) => {
+      const section: TodoSection = {
+        name: '',
+        items: [],
         ...(initialFields ?? {}),
       };
 
-      return item;
+      return section;
     },
-    [addItem]
+    []
   );
 
   const swapItems = useCallback(
@@ -325,6 +335,94 @@ export const useTodo = (initialName?: string) => {
     [swapItems, todoSections]
   );
 
+  const addSection = useCallback(
+    async (
+      section: TodoSection,
+      afterSectionIndex: number,
+      insertAtTodoIndex?: number
+    ) => {
+      await update((previousSections) => {
+        if (!previousSections) {
+          previousSections = [];
+        }
+
+        if (
+          afterSectionIndex < 0 ||
+          afterSectionIndex > previousSections?.length
+        ) {
+          throw new Error('Section index out of bounds');
+        }
+
+        if (insertAtTodoIndex !== undefined) {
+          if (
+            afterSectionIndex < 0 ||
+            afterSectionIndex > previousSections.length - 1
+          ) {
+            throw new Error('Section index out of bounds');
+          }
+
+          const sectionBefore = previousSections[afterSectionIndex];
+
+          if (
+            insertAtTodoIndex < 0 ||
+            sectionBefore.items.length < insertAtTodoIndex
+          ) {
+            throw new Error('Item index out of bounds');
+          }
+
+          const itemsInNewSection = sectionBefore.items.slice(
+            insertAtTodoIndex + 1
+          );
+
+          sectionBefore.items = sectionBefore.items.slice(
+            0,
+            insertAtTodoIndex + 1
+          );
+          section.items.push(...itemsInNewSection);
+        }
+
+        return [
+          ...previousSections.slice(0, afterSectionIndex + 1),
+          section,
+          ...previousSections.slice(afterSectionIndex + 1),
+        ];
+      });
+
+      return { section, index: afterSectionIndex + 1 };
+    },
+    [update]
+  );
+
+  const removeSection = useCallback(
+    async (sectionIndex: number, keepItems?: boolean) => {
+      await update((previousSections) => {
+        if (!previousSections) return [];
+
+        if (sectionIndex < 0 || sectionIndex > previousSections.length - 1) {
+          throw new Error('Section index out of bounds');
+        }
+
+        const newSections = [...previousSections];
+
+        if (sectionIndex === 0) {
+          // Default section needs to always exist, but name can be hidden.
+          newSections[0].name = undefined;
+          return newSections;
+        }
+
+        if (keepItems) {
+          const items = newSections[sectionIndex].items;
+          newSections[sectionIndex - 1].items.push(...items);
+        }
+
+        newSections.splice(sectionIndex, 1);
+
+        return newSections;
+      });
+    },
+    [update]
+  );
+
   const getItem = useCallback(
     (itemIndex: number, sectionIndex = 0) => {
       if (!todoSections) return null;
@@ -345,7 +443,11 @@ export const useTodo = (initialName?: string) => {
     removeItem,
     addItem,
     createItem,
+    createSection,
     swapItems,
     moveItem,
+    updateSection,
+    addSection,
+    removeSection,
   };
 };

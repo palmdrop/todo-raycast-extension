@@ -14,6 +14,7 @@ export const EditTodoView = ({ initialTodoItem, onSubmit }: Props) => {
     onSubmit: async (values) => {
       const item = {
         checked: false,
+        ...initialTodoItem,
         ...values,
       };
 

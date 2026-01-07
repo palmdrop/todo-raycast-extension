@@ -14,6 +14,7 @@ import { useTodo } from './todo/useTodo';
 import { useState } from 'react';
 import { TodoItem } from './core/types';
 import { EditTodoView } from './components/EditTodoView';
+import { EditSectionView } from './components/EditSectionView';
 
 const checkedIcon = {
   source: Icon.CircleFilled,
@@ -24,6 +25,8 @@ const uncheckedIcon = {
   source: Icon.Circle,
   tintColor: Color.Red,
 };
+
+type TodoFilter = 'complete' | 'incomplete' | 'all';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getTodoMarkdown = (item: TodoItem) => {
@@ -44,14 +47,20 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     updateItem,
     removeItem,
     createItem,
+    createSection,
     addItem,
     moveItem,
+    updateSection,
+    addSection,
+    removeSection,
   } = useTodo(props.arguments.name);
 
   const { push, pop } = useNavigation();
 
   const [showDetail, setShowDetail] = useState(true); // TODO: remember state using cache
   const [focusedItem, setFocusedItem] = useState<string | undefined>(undefined);
+
+  const [filter, setFilter] = useState<TodoFilter>('all');
 
   const onUpdate = (itemIndex: number, sectionIndex = 0) => {
     const item = getItem(itemIndex, sectionIndex);
@@ -112,15 +121,129 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     setFocusedItem(getItemKey(newIndices.itemIndex, newIndices.sectionIndex));
   };
 
+  const onEditSection = (sectionIndex: number) => {
+    if (!sections || sectionIndex < 0 || sectionIndex >= sections.length)
+      return;
+
+    push(
+      <EditSectionView
+        initialSection={sections[sectionIndex]}
+        onSubmit={(section) => {
+          updateSection(section, sectionIndex);
+          pop();
+        }}
+      />
+    );
+  };
+
+  const onAddSection = async (sectionIndex: number, itemIndex: number) => {
+    if (!sections || sectionIndex < 0 || sectionIndex >= sections.length) {
+      return;
+    }
+
+    const section = await createSection({ name: 'New Section' });
+
+    push(
+      <EditSectionView
+        initialSection={section}
+        onSubmit={async (section) => {
+          await addSection(section, sectionIndex, itemIndex);
+          pop();
+        }}
+      />
+    );
+  };
+
+  const listActions = (itemIndex: number, sectionIndex: number) => (
+    <ActionPanel.Section title="List actions">
+      <Action
+        title="Add Item"
+        onAction={() => onAdd(itemIndex, sectionIndex, true)}
+        icon={Icon.Plus}
+        shortcut={Keyboard.Shortcut.Common.New}
+      />
+      <Action
+        title="Add Item Before"
+        onAction={() => onAdd(itemIndex, sectionIndex, false)}
+        icon={Icon.Plus}
+      />
+      <Action
+        title="Add Item After"
+        onAction={() => onAdd(itemIndex, sectionIndex, true)}
+        icon={Icon.Plus}
+      />
+      <Action
+        title="Edit Section"
+        onAction={() => onEditSection(sectionIndex)}
+        icon={Icon.Pencil}
+      />
+      <Action
+        title="Add Section"
+        onAction={() => onAddSection(sectionIndex, itemIndex)}
+        icon={Icon.Pencil}
+      />
+      <Action
+        title="Delete Section"
+        onAction={() => removeSection(sectionIndex, true)}
+        icon={Icon.Trash}
+      />
+      <Action
+        title="Show Details"
+        onAction={() => setShowDetail((showDetail) => !showDetail)}
+        icon={showDetail ? Icon.EyeDisabled : Icon.Eye}
+        shortcut={Keyboard.Shortcut.Common.Open}
+      />
+      <Action
+        title="Refresh"
+        onAction={revaluate}
+        icon={Icon.ArrowClockwise}
+        shortcut={Keyboard.Shortcut.Common.Refresh}
+      />
+    </ActionPanel.Section>
+  );
+
+  const filterItems = (items?: TodoItem[]) => {
+    if (!items) return [];
+    return items.filter((item) => {
+      switch (filter) {
+        case 'all':
+          return true;
+        case 'complete':
+          return item.checked;
+        case 'incomplete':
+          return !item.checked;
+      }
+    });
+  };
+
   return (
-    <List isShowingDetail={showDetail} selectedItemId={focusedItem}>
+    <List
+      isShowingDetail={showDetail}
+      selectedItemId={focusedItem}
+      filtering={{ keepSectionOrder: true }}
+      searchBarAccessory={
+        <List.Dropdown
+          storeValue={true}
+          tooltip="Filter"
+          value={filter}
+          defaultValue="all"
+          onChange={(value) => setFilter(value as TodoFilter)}
+        >
+          <List.Dropdown.Item title="All" value={'all'} />
+          <List.Dropdown.Section title="Status">
+            <List.Dropdown.Item title="Complete" value={'complete'} />
+            <List.Dropdown.Item title="Incomplete" value={'incomplete'} />
+          </List.Dropdown.Section>
+        </List.Dropdown>
+      }
+    >
       {sections?.map((section, sectionIndex) => (
         <List.Section
           key={sectionIndex}
-          title={section.name ?? 'Todo Items'}
-          subtitle={section.items.length.toString()}
+          title={section.name}
+          subtitle={section.name ? section.items.length.toString() : undefined}
         >
-          {section.items?.map((item, itemIndex) => (
+          {filterItems(section.items).map((item, itemIndex) => (
             <List.Item
               key={getItemKey(itemIndex, sectionIndex)} // TODO: better key?
               id={getItemKey(itemIndex, sectionIndex)}
@@ -164,13 +287,13 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                       icon={!item.checked ? Icon.Check : Icon.Xmark}
                     />
                     <Action
-                      title="Edit"
+                      title="Edit Item"
                       onAction={() => onUpdate(itemIndex, sectionIndex)}
                       icon={Icon.Pencil}
                       shortcut={Keyboard.Shortcut.Common.Edit}
                     />
                     <Action
-                      title="Delete"
+                      title="Delete Item"
                       onAction={() => removeItem(itemIndex, sectionIndex)}
                       icon={Icon.Trash}
                       shortcut={Keyboard.Shortcut.Common.Remove}
@@ -188,42 +311,32 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                       shortcut={Keyboard.Shortcut.Common.MoveDown}
                     />
                   </ActionPanel.Section>
-                  <ActionPanel.Section title="List actions">
-                    <Action
-                      title="Add Item"
-                      onAction={() => onAdd(itemIndex, sectionIndex, true)}
-                      icon={Icon.Plus}
-                      shortcut={Keyboard.Shortcut.Common.New}
-                    />
-                    <Action
-                      title="Add Item Before"
-                      onAction={() => onAdd(itemIndex, sectionIndex, false)}
-                      icon={Icon.Plus}
-                    />
-                    <Action
-                      title="Add Item After"
-                      onAction={() => onAdd(itemIndex, sectionIndex, true)}
-                      icon={Icon.Plus}
-                    />
-                    <Action
-                      title="Show Details"
-                      onAction={() =>
-                        setShowDetail((showDetail) => !showDetail)
-                      }
-                      icon={showDetail ? Icon.EyeDisabled : Icon.Eye}
-                      shortcut={Keyboard.Shortcut.Common.Open}
-                    />
-                    <Action
-                      title="Refresh"
-                      onAction={revaluate}
-                      icon={Icon.ArrowClockwise}
-                      shortcut={Keyboard.Shortcut.Common.Refresh}
-                    />
-                  </ActionPanel.Section>
+                  {listActions(itemIndex, sectionIndex)}
                 </ActionPanel>
               }
             />
           ))}
+          {(sectionIndex === sections.length - 1 || !section.items.length) && (
+            <List.Item
+              key={getItemKey(-1, sectionIndex)}
+              id={getItemKey(-1, sectionIndex)}
+              icon={Icon.Plus}
+              title="Add item"
+              actions={
+                <ActionPanel>
+                  <ActionPanel.Section title="Item actions">
+                    <Action
+                      title="Add Item"
+                      onAction={() => onAdd(0, sectionIndex, true)}
+                      icon={Icon.Plus}
+                      shortcut={Keyboard.Shortcut.Common.New}
+                    />
+                  </ActionPanel.Section>
+                  {listActions(0, sectionIndex)}
+                </ActionPanel>
+              }
+            />
+          )}
         </List.Section>
       ))}
     </List>

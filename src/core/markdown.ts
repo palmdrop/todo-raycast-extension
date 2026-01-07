@@ -169,6 +169,12 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
     after.push(...blocks.slice(1));
   }
 
+  if (!sections.length) {
+    sections.push({
+      items: [],
+    });
+  }
+
   return { sections, before, after };
 };
 
