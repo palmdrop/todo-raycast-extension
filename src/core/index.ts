@@ -1,17 +1,20 @@
 import * as data from './data';
 import * as markdown from './markdown';
-import { TodoItem } from './types';
+import { TodoList, TodoSection } from './types';
 
-export const getTodoItems = async (name: string) => {
+export const getTodoList = async (name: string): Promise<TodoList> => {
   if (!data.exists(name)) throw new Error(`Todo list "${name}" does not exist`);
 
   const todoListData = await data.readTodoList(name);
-  const { todoItems } = markdown.parseTodoItemsFromMarkdown(todoListData);
-  return todoItems;
+  const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
+  return { name, sections };
 };
 
 let writeLock: number | null = null;
-export const updateTodoItems = async (name: string, todoItems: TodoItem[]) => {
+export const updateTodoItems = async (
+  name: string,
+  sections: TodoSection[]
+) => {
   const now = Date.now();
   writeLock = now;
 
@@ -24,10 +27,10 @@ export const updateTodoItems = async (name: string, todoItems: TodoItem[]) => {
 
   const currentContent = await data.readTodoList(name);
 
-  const newContent = markdown.convertTodoItemsToMarkdown(
-    currentContent,
-    todoItems
-  );
+  const newContent = markdown.convertTodoListToMarkdown(currentContent, {
+    name,
+    sections,
+  });
 
   // Prevents concurrent writes... kind of
   if (writeLock === now) {

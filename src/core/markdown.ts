@@ -1,6 +1,7 @@
-import { TodoItem } from './types';
+import { TodoItem, TodoList, TodoSection } from './types';
 
 const TODO_REGEX = /^- \[(x|X| )?\] (.*)/;
+const SECTION_REGEX = /^# (.*)/;
 
 const INDENT = '  ';
 const PROPERTY_PREFIX = '* ';
@@ -47,11 +48,16 @@ const todoItemToMarkdown = (todoItem: TodoItem) => {
   );
 };
 
-// TODO: should this return frontmatter directly?
+const todoSectionToMarkdown = (section: TodoSection) => {
+  const items = section.items.map(todoItemToMarkdown).join('\n');
+  return `${section.name ? `# ${section.name}\n` : ''}${items}`;
+};
+
 export const parseTodoItemsFromMarkdown = (markdown: string) => {
   const contentWithoutFrontmatter = removeFrontmatter(markdown);
 
-  const todoItems: TodoItem[] = [];
+  const sections: { name?: string; items: TodoItem[] }[] = [];
+  // const todoItems: TodoItem[] = [];
 
   const lines = contentWithoutFrontmatter.split('\n');
   const before: string[] = [];
@@ -96,19 +102,46 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
     todoItem.description = description.join('\n').trim();
   };
 
+  // TODO: simplify this code lol
   let currentPool: string[] = [];
   for (const line of lines) {
     const match = line.match(TODO_REGEX);
+    const sectionMatch = line.match(SECTION_REGEX);
+
+    if (sectionMatch) {
+      const name = sectionMatch[1].trim();
+
+      if (currentPool.length) {
+        addAdditionalDataToItem(sections.at(-1)!.items.at(-1)!, currentPool);
+        currentPool = [];
+      }
+
+      sections.push({
+        name,
+        items: [],
+      });
+
+      continue;
+    }
 
     if (!match) {
-      if (!todoItems.length) {
-        before.push(line);
-      } else {
+      if (sections.length && sections.at(-1)?.items.length) {
         currentPool.push(line);
+      } else {
+        before.push(line);
       }
 
       continue;
     }
+
+    if (!sections.length) {
+      sections.push({
+        items: [],
+      });
+    }
+
+    const currentSection = sections.at(-1)!;
+    const todoItems = currentSection.items;
 
     if (currentPool.length && todoItems.length) {
       addAdditionalDataToItem(todoItems.at(-1)!, currentPool);
@@ -131,20 +164,21 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
   if (currentPool.length) {
     // NOTE: excessive joins and splits
     const blocks = currentPool.join('\n').split('\n\n');
+    const todoItems = sections.at(-1)!.items;
     addAdditionalDataToItem(todoItems.at(-1)!, blocks[0].split('\n'));
     after.push(...blocks.slice(1));
   }
 
-  return { todoItems, before, after };
+  return { sections, before, after };
 };
 
-export const convertTodoItemsToMarkdown = (
+export const convertTodoListToMarkdown = (
   currentMarkdown: string,
-  todoItems: TodoItem[]
+  todoList: TodoList
 ) => {
   const frontmatter = getFrontmatter(currentMarkdown);
 
-  const { after, before } = parseTodoItemsFromMarkdown(currentMarkdown);
+  const { before, after } = parseTodoItemsFromMarkdown(currentMarkdown);
 
   const content =
     // Frontmatter
@@ -152,7 +186,7 @@ export const convertTodoItemsToMarkdown = (
     // Before
     (before.length ? before.join('\n') + '\n' : '') +
     // Items
-    todoItems.map(todoItemToMarkdown).join('\n') +
+    (todoList.sections.map(todoSectionToMarkdown).join('\n') + '\n') +
     // After
     (after.length ? after.join('\n') : '');
 

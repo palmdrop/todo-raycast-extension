@@ -8,10 +8,12 @@ export type TodoItem = {
   // TODO: add subtasks
 };
 
+export type TodoSection = {
+  name?: string;
+  items: TodoItem[];
+};
+
 export type TodoList = {
   name: string;
-  sections: {
-    name?: string;
-    items: TodoItem[];
-  }[];
+  sections: TodoSection[];
 };

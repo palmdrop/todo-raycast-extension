@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { TodoItem } from '../core/types';
+import { TodoItem, TodoSection } from '../core/types';
 import * as core from '../core';
 import { popToRoot, showToast, Toast } from '@raycast/api';
 
 export const useTodo = (initialName?: string) => {
   const [name, setName] = useState(initialName);
-  const [todoItems, setTodoItems] = useState<TodoItem[] | null>(null);
+  const [todoSections, setTodoSections] = useState<TodoSection[] | null>(null);
 
   const init = useMemo(() => {
     let isRunning = false;
@@ -14,10 +14,10 @@ export const useTodo = (initialName?: string) => {
       try {
         if (!name || init.aborted) return;
 
-        const items = await core.getTodoItems(name);
+        const { sections } = await core.getTodoList(name);
         if (init.aborted) return;
 
-        setTodoItems(items);
+        setTodoSections(sections);
       } catch (error: unknown) {
         console.error(error);
         showToast(
@@ -41,7 +41,7 @@ export const useTodo = (initialName?: string) => {
     };
 
     return init;
-  }, [setTodoItems, name]);
+  }, [setTodoSections, name]);
 
   useEffect(() => {
     let aborted = false;
@@ -67,37 +67,66 @@ export const useTodo = (initialName?: string) => {
   }, [init, name]);
 
   const commit = useCallback(
-    async (todoItems: TodoItem[] | null) => {
-      return await core.updateTodoItems(name!, todoItems ?? []);
+    async (todoSections: TodoSection[]) => {
+      return await core.updateTodoItems(name!, todoSections);
     },
     [name]
   );
 
   const update = useCallback(
     async (
-      items: TodoItem[] | ((current: TodoItem[] | null) => TodoItem[] | null)
+      sections:
+        | TodoSection[]
+        | ((current: TodoSection[] | null) => TodoSection[])
     ) => {
-      const newItems = typeof items === 'function' ? items(todoItems) : items;
-      await commit(newItems);
+      const newSections =
+        typeof sections === 'function' ? sections(todoSections) : sections;
+
+      await commit(newSections);
       revaluate();
     },
-    [commit, revaluate, todoItems]
+    [commit, revaluate, todoSections]
+  );
+
+  const updateSection = useCallback(
+    (
+      section: TodoSection | ((previousSection: TodoSection) => TodoSection),
+      index: number
+    ) => {
+      update((previousSections) => {
+        if (!previousSections) return [];
+
+        if (previousSections.length <= index) {
+          throw new Error('No section at index ' + index);
+        }
+
+        const previousSection = previousSections[index];
+        const newSection =
+          typeof section === 'function' ? section(previousSection) : section;
+
+        return [
+          ...previousSections.slice(0, index),
+          newSection,
+          ...previousSections.slice(index + 1),
+        ];
+      });
+    },
+    [update]
   );
 
   const updateItem = useCallback(
     async (
       item: Partial<TodoItem> | ((item: TodoItem) => Partial<TodoItem>),
-      index: number
+      itemIndex: number,
+      sectionIndex = 0
     ) => {
-      update((previousItems) => {
-        if (!previousItems) return null;
-
-        if (previousItems.length <= index) {
-          throw new Error('No todo item at index ' + index);
+      updateSection((previousSection) => {
+        if (previousSection.items.length <= itemIndex) {
+          throw new Error('No todo item at index ' + itemIndex);
         }
 
-        const newItems = previousItems.map((existingItem, i) =>
-          index !== i
+        const newSection = previousSection.items.map((existingItem, i) =>
+          itemIndex !== i
             ? existingItem
             : {
                 ...existingItem,
@@ -105,59 +134,68 @@ export const useTodo = (initialName?: string) => {
               }
         );
 
-        return newItems;
-      });
+        return {
+          ...previousSection,
+          items: newSection,
+        };
+      }, sectionIndex);
     },
     [update]
   );
 
   const toggleItem = useCallback(
-    async (index: number) => {
+    async (index: number, sectionIndex = 0) => {
       updateItem(
         (item) => ({
           ...item,
           checked: !item.checked,
         }),
-        index
+        index,
+        sectionIndex
       );
     },
     [update]
   );
 
   const removeItem = useCallback(
-    async (index: number) => {
-      update((previousItems) => {
-        // NOTE: code duplication... fix
-        if (!previousItems) return null;
-
-        if (previousItems.length <= index) {
-          throw new Error('No todo item at index ' + index);
+    async (itemIndex: number, sectionIndex = 0) => {
+      updateSection((previousSection) => {
+        if (previousSection.items.length <= itemIndex) {
+          throw new Error('No todo item at index ' + itemIndex);
         }
 
-        return previousItems.filter((_, i) => i !== index);
-      });
+        const newItems = previousSection.items.filter(
+          (_, i) => i !== itemIndex
+        );
+        return {
+          ...previousSection,
+          items: newItems,
+        };
+      }, sectionIndex);
     },
     [update]
   );
 
   const addItem = useCallback(
-    async (item: TodoItem, index?: number, after?: boolean) => {
-      update((previousItems) => {
-        if (!previousItems?.length) return [item];
-
-        if (typeof index === 'undefined') {
-          return [...(previousItems ?? []), item];
-        }
-
-        if (index < 0 || index > previousItems.length) {
+    async (
+      item: TodoItem,
+      itemIndex: number,
+      sectionIndex = 0,
+      after?: boolean
+    ) => {
+      updateSection((previousSection) => {
+        if (itemIndex < 0 || itemIndex > previousSection.items.length) {
           throw new Error('Index out of bounds');
         }
 
-        const newItems = [...previousItems];
-        newItems.splice(index + (after ? 1 : 0), 0, item);
+        const newItems = [...previousSection.items];
+        newItems.splice(itemIndex + (after ? 1 : 0), 0, item);
 
-        return newItems;
-      });
+        return {
+          ...previousSection,
+          items: newItems,
+        };
+      }, sectionIndex);
     },
     [update]
   );
@@ -178,29 +216,127 @@ export const useTodo = (initialName?: string) => {
   );
 
   const swapItems = useCallback(
-    async (indexA: number, indexB: number) => {
-      update((previousItems) => {
-        if (!previousItems) return null;
+    async (
+      itemIndexA: number,
+      sectionIndexA: number,
+      itemIndexB: number,
+      sectionIndexB: number
+    ) => {
+      update((previousSections) => {
+        if (!previousSections) return [];
 
-        if (previousItems.length <= indexA || previousItems.length <= indexB) {
-          throw new Error('Index out of bounds');
+        if (sectionIndexA < 0 || sectionIndexA >= previousSections.length) {
+          throw new Error('Section index A out of bounds');
         }
 
-        const newItems = [...previousItems];
-        [newItems[indexA], newItems[indexB]] = [
-          newItems[indexB],
-          newItems[indexA],
-        ];
+        if (sectionIndexB < 0 || sectionIndexB >= previousSections.length) {
+          throw new Error('Section index B out of bounds');
+        }
 
-        return newItems;
+        const newSections = [...previousSections];
+
+        const sectionA = newSections[sectionIndexA];
+        const sectionB = newSections[sectionIndexB];
+
+        if (itemIndexA < 0 || itemIndexA >= sectionA.items.length) {
+          throw new Error('Item index A out of bounds');
+        }
+
+        if (itemIndexB < 0 || itemIndexB >= sectionB.items.length) {
+          throw new Error('Item index B out of bounds');
+        }
+
+        const itemA = sectionA.items[itemIndexA];
+        const itemB = sectionB.items[itemIndexB];
+        sectionA.items[itemIndexA] = itemB;
+        sectionB.items[itemIndexB] = itemA;
+
+        return newSections;
       });
     },
     [update]
   );
 
+  const moveItem = useCallback(
+    async (
+      itemIndex: number,
+      sectionIndex: number,
+      direction: 'up' | 'down'
+    ) => {
+      if (!todoSections) return null;
+
+      const sourceSectionIndex = sectionIndex;
+      const sourceItemIndex = itemIndex;
+      const sourceSection = todoSections[sourceSectionIndex];
+
+      let targetSectionIndex = sourceSectionIndex;
+      let targetIndex;
+
+      if (direction === 'up' && sourceItemIndex === 0) {
+        targetSectionIndex--;
+      } else if (
+        direction === 'down' &&
+        itemIndex === sourceSection.items.length - 1
+      ) {
+        targetSectionIndex++;
+      }
+
+      if (targetSectionIndex < 0) {
+        targetSectionIndex = todoSections.length - 1;
+      } else if (targetSectionIndex > todoSections.length - 1) {
+        targetSectionIndex = 0;
+      }
+
+      const targetSection = todoSections[targetSectionIndex];
+
+      if (targetSectionIndex === sourceSectionIndex) {
+        targetIndex = sourceItemIndex + (direction === 'up' ? -1 : 1);
+      } else {
+        targetIndex = direction === 'up' ? targetSection.items.length : 0;
+      }
+
+      if (targetSectionIndex === sourceSectionIndex) {
+        await swapItems(
+          sourceItemIndex,
+          sourceSectionIndex,
+          targetIndex,
+          targetSectionIndex
+        );
+      } else {
+        await update((previousSections) => {
+          if (!previousSections) return [];
+
+          const newSections = [...previousSections];
+          const sourceSection = newSections[sourceSectionIndex];
+          const targetSection = newSections[targetSectionIndex];
+
+          const [item] = sourceSection.items.splice(sourceItemIndex, 1);
+          targetSection.items.splice(targetIndex, 0, item);
+
+          return newSections;
+        });
+      }
+
+      return {
+        sectionIndex: targetSectionIndex,
+        itemIndex: targetIndex,
+      };
+    },
+    [swapItems, todoSections]
+  );
+
+  const getItem = useCallback(
+    (itemIndex: number, sectionIndex = 0) => {
+      if (!todoSections) return null;
+      return todoSections[sectionIndex]?.items[itemIndex];
+    },
+    [todoSections]
+  );
+
   return {
     name,
-    items: todoItems,
+    sections: todoSections,
+    getItem,
     revaluate,
     commit,
     update,
@@ -210,5 +346,6 @@ export const useTodo = (initialName?: string) => {
     addItem,
     createItem,
     swapItems,
+    moveItem,
   };
 };
