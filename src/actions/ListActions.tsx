@@ -8,6 +8,8 @@ export type TodoListActionHandlers = {
   setShowDetail: (
     showingDetail: boolean | ((previousValue: boolean) => boolean)
   ) => void;
+  undo: () => void;
+  clearHistory: () => void;
   revaluate: () => void;
 };
 
@@ -57,6 +59,17 @@ export const ListActions = ({ showDetail, actionHandlers }: Props) => {
         }
         icon={showDetail ? Icon.EyeDisabled : Icon.Eye}
         shortcut={Keyboard.Shortcut.Common.Open}
+      />
+      <Action
+        title="Undo"
+        onAction={actionHandlers.undo}
+        icon={Icon.Undo}
+        shortcut={{ modifiers: ['cmd'], key: 'z' }}
+      />
+      <Action
+        title="Clear History"
+        onAction={actionHandlers.clearHistory}
+        icon={Icon.Trash}
       />
       <Action
         title="Refresh"

@@ -35,6 +35,8 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     updateSection,
     addSection,
     removeSection,
+    undo,
+    clearHistory,
   } = useTodo(props.arguments.name);
 
   const { push, pop } = useNavigation();
@@ -56,7 +58,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
       <EditTodoView
         initialTodoItem={item}
         onSubmit={(item) => {
-          updateItem(item, itemIndex);
+          updateItem(item, itemIndex, sectionIndex);
           pop();
         }}
       />
@@ -143,7 +145,9 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           onEditSection: () => onEditSection(sectionIndex),
           removeSection: (keepItems: boolean) =>
             removeSection(sectionIndex, keepItems),
+          undo,
           revaluate,
+          clearHistory,
           setShowDetail,
         }}
       />
@@ -203,6 +207,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
         >
           {filterItems(section.items).map((item, itemIndex) => (
             <TodoListItem
+              id={getItemKey(itemIndex, sectionIndex)}
               key={getItemKey(itemIndex, sectionIndex)}
               item={item}
               parentSection={section}

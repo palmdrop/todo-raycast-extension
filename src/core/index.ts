@@ -43,3 +43,13 @@ export const updateTodoItems = async (
 export const getLatestTodoName = async () => {
   return await data.getLatestTodoName();
 };
+
+export const undoTodoListChange = async (name: string) => {
+  const todoListData = await data.undoTodoListChange(name);
+  const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
+  return { name, sections };
+};
+
+export const clearHistory = async (name: string) => {
+  return await data.clearUndoHistory(name);
+};

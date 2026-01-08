@@ -1,6 +1,8 @@
 import { LocalStorage } from '@raycast/api';
 import { existsSync, statSync } from 'fs';
 import fs from 'fs/promises';
+import { popHistory, pushHistory } from './history';
+import { clearHistory } from './history';
 
 type TodoListData = {
   name: string;
@@ -59,13 +61,30 @@ const read = async (name: string) => {
   return await fs.readFile(todo.filePath, 'utf-8');
 };
 
-const write = async (name: string, content: string) => {
+const write = async (name: string, content: string, pushToHistory = true) => {
   const todo = await get(name);
   if (!todo) {
     throw new Error(`Todo list with name "${name}" does not exist`);
   }
 
   await fs.writeFile(todo.filePath, content, 'utf-8');
+
+  if (pushToHistory) {
+    await pushHistory(name, {
+      dateTime: new Date().toISOString(),
+      content,
+    });
+  }
+};
+
+const restore = async (name: string, index = 0) => {
+  const previous = await popHistory(name, index);
+
+  if (!previous) throw new Error('No history to restore');
+
+  await write(name, previous.content, false);
+
+  return previous.content;
 };
 
 const setLatest = async (name: string) => {
@@ -181,4 +200,12 @@ export const updateTodoList = async (name: string, content: string) => {
 
 export const getLatestTodoName = async () => {
   return await LocalStorage.getItem<string>(LATEST_TODO_KEY);
+};
+
+export const undoTodoListChange = async (name: string) => {
+  return await restore(name);
+};
+
+export const clearUndoHistory = async (name: string) => {
+  return await clearHistory(name);
 };
