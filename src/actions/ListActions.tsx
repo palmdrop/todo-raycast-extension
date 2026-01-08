@@ -1,10 +1,10 @@
 import { Action, ActionPanel, Icon, Keyboard } from '@raycast/api';
 
 export type TodoListActionHandlers = {
-  onAdd: (itemIndex: number, sectionIndex: number, before: boolean) => void;
-  onEditSection: (sectionIndex: number) => void;
-  onAddSection: (sectionIndex: number, itemIndex: number) => void;
-  removeSection: (sectionIndex: number, confirm: boolean) => void;
+  onAdd: () => void;
+  onEditSection: () => void;
+  onAddSection: () => void;
+  removeSection: (keepItems: boolean) => void;
   setShowDetail: (
     showingDetail: boolean | ((previousValue: boolean) => boolean)
   ) => void;
@@ -13,48 +13,41 @@ export type TodoListActionHandlers = {
 
 type Props = {
   showDetail: boolean;
-  itemIndex: number;
-  sectionIndex: number;
   actionHandlers: TodoListActionHandlers;
 };
 
-export const ListActions = ({
-  showDetail,
-  itemIndex,
-  sectionIndex,
-  actionHandlers,
-}: Props) => {
+export const ListActions = ({ showDetail, actionHandlers }: Props) => {
   return (
     <ActionPanel.Section title="List actions">
       <Action
         title="Add Item"
-        onAction={() => actionHandlers.onAdd(itemIndex, sectionIndex, true)}
+        onAction={actionHandlers.onAdd}
         icon={Icon.Plus}
         shortcut={Keyboard.Shortcut.Common.New}
       />
       <Action
         title="Add Item Before"
-        onAction={() => actionHandlers.onAdd(itemIndex, sectionIndex, false)}
+        onAction={actionHandlers.onAdd}
         icon={Icon.Plus}
       />
       <Action
         title="Add Item After"
-        onAction={() => actionHandlers.onAdd(itemIndex, sectionIndex, true)}
+        onAction={actionHandlers.onAdd}
         icon={Icon.Plus}
       />
       <Action
         title="Edit Section"
-        onAction={() => actionHandlers.onEditSection(sectionIndex)}
+        onAction={actionHandlers.onEditSection}
         icon={Icon.Pencil}
       />
       <Action
         title="Add Section"
-        onAction={() => actionHandlers.onAddSection(sectionIndex, itemIndex)}
+        onAction={actionHandlers.onAddSection}
         icon={Icon.Pencil}
       />
       <Action
         title="Delete Section"
-        onAction={() => actionHandlers.removeSection(sectionIndex, true)}
+        onAction={() => actionHandlers.removeSection(true)}
         icon={Icon.Trash}
       />
       <Action

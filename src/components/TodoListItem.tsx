@@ -7,25 +7,23 @@ import { getItemKey } from '../utils/key';
 
 type Props = {
   item: TodoItemType;
+  key: string;
   parentSection: TodoSection;
-  itemIndex: number;
-  sectionIndex: number;
   actionHandlers: ItemActionHandlers;
   additionalActions?: React.ReactNode;
 };
 
 export const TodoListItem = ({
   item,
+  key,
   parentSection,
-  itemIndex,
-  sectionIndex,
   actionHandlers,
   additionalActions,
 }: Props) => {
   return (
     <List.Item
-      key={getItemKey(itemIndex, sectionIndex)} // TODO: better key?
-      id={getItemKey(itemIndex, sectionIndex)}
+      key={key}
+      id={key}
       icon={item.checked ? CHECKED_ICON : UNCHECKED_ICON}
       title={item.content}
       // TODO: read section using hook? will this recompute? check?

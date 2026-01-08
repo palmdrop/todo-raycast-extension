@@ -137,13 +137,12 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     (itemIndex: number, sectionIndex: number) => (
       <ListActions
         showDetail={showDetail}
-        itemIndex={itemIndex}
-        sectionIndex={sectionIndex}
         actionHandlers={{
-          onAdd,
-          onAddSection,
-          onEditSection,
-          removeSection,
+          onAdd: () => onAdd(itemIndex, sectionIndex, false),
+          onAddSection: () => onAddSection(sectionIndex, itemIndex),
+          onEditSection: () => onEditSection(sectionIndex),
+          removeSection: (keepItems: boolean) =>
+            removeSection(sectionIndex, keepItems),
           revaluate,
           setShowDetail,
         }}
@@ -207,14 +206,13 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
               key={getItemKey(itemIndex, sectionIndex)}
               item={item}
               parentSection={section}
-              itemIndex={itemIndex}
-              sectionIndex={sectionIndex}
               actionHandlers={{
                 // NOTE: this can be rewritten so that handlers do not need index! just pass an anonym func here with indices already wrapped
-                onMove,
-                onUpdate,
-                removeItem,
-                toggleItem,
+                onMove: (direction) =>
+                  onMove(itemIndex, sectionIndex, direction),
+                onUpdate: () => onUpdate(itemIndex, sectionIndex),
+                removeItem: () => removeItem(itemIndex, sectionIndex),
+                toggleItem: () => toggleItem(itemIndex, sectionIndex),
               }}
               additionalActions={getListActions(itemIndex, sectionIndex)}
             />
