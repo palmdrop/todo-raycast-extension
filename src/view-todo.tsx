@@ -1,9 +1,4 @@
 import {
-  Action,
-  ActionPanel,
-  Color,
-  Icon,
-  Keyboard,
   LaunchProps,
   List,
   showToast,
@@ -11,28 +6,15 @@ import {
   useNavigation,
 } from '@raycast/api';
 import { useTodo } from './todo/useTodo';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { TodoItem } from './core/types';
 import { EditTodoView } from './components/EditTodoView';
 import { EditSectionView } from './components/EditSectionView';
-
-const checkedIcon = {
-  source: Icon.CircleFilled,
-  tintColor: Color.Green,
-};
-
-const uncheckedIcon = {
-  source: Icon.Circle,
-  tintColor: Color.Red,
-};
+import { TodoListItem } from './components/TodoListItem';
+import { ListActions } from './actions/ListActions';
+import { AddNewListItem } from './components/AddNewListItem';
 
 type TodoFilter = 'complete' | 'incomplete' | 'all';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const getTodoMarkdown = (item: TodoItem) => {
-  // return `# ${item.content}`;
-  return undefined;
-};
 
 const getItemKey = (itemIndex: number, sectionIndex: number) => {
   return `${itemIndex}-${sectionIndex}`;
@@ -87,6 +69,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     after: boolean
   ) => {
     const item = await createItem();
+
     push(
       <EditTodoView
         initialTodoItem={item}
@@ -108,10 +91,6 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     sectionIndex: number,
     direction: 'up' | 'down'
   ) => {
-    // const newIndex = itemIndex + (direction === 'up' ? -1 : 1);
-    // if (newIndex < 0 || newIndex >= (todoItems?.length ?? 0)) return;
-
-    // swapItems(itemIndex, newIndex);
     const newIndices = await moveItem(itemIndex, sectionIndex, direction);
     if (!newIndices) {
       showToast(Toast.Style.Failure, 'Failed to move item');
@@ -154,56 +133,36 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     );
   };
 
-  const listActions = (itemIndex: number, sectionIndex: number) => (
-    <ActionPanel.Section title="List actions">
-      <Action
-        title="Add Item"
-        onAction={() => onAdd(itemIndex, sectionIndex, true)}
-        icon={Icon.Plus}
-        shortcut={Keyboard.Shortcut.Common.New}
+  const getListActions = useCallback(
+    (itemIndex: number, sectionIndex: number) => (
+      <ListActions
+        showDetail={showDetail}
+        itemIndex={itemIndex}
+        sectionIndex={sectionIndex}
+        actionHandlers={{
+          onAdd,
+          onAddSection,
+          onEditSection,
+          removeSection,
+          revaluate,
+          setShowDetail,
+        }}
       />
-      <Action
-        title="Add Item Before"
-        onAction={() => onAdd(itemIndex, sectionIndex, false)}
-        icon={Icon.Plus}
-      />
-      <Action
-        title="Add Item After"
-        onAction={() => onAdd(itemIndex, sectionIndex, true)}
-        icon={Icon.Plus}
-      />
-      <Action
-        title="Edit Section"
-        onAction={() => onEditSection(sectionIndex)}
-        icon={Icon.Pencil}
-      />
-      <Action
-        title="Add Section"
-        onAction={() => onAddSection(sectionIndex, itemIndex)}
-        icon={Icon.Pencil}
-      />
-      <Action
-        title="Delete Section"
-        onAction={() => removeSection(sectionIndex, true)}
-        icon={Icon.Trash}
-      />
-      <Action
-        title="Show Details"
-        onAction={() => setShowDetail((showDetail) => !showDetail)}
-        icon={showDetail ? Icon.EyeDisabled : Icon.Eye}
-        shortcut={Keyboard.Shortcut.Common.Open}
-      />
-      <Action
-        title="Refresh"
-        onAction={revaluate}
-        icon={Icon.ArrowClockwise}
-        shortcut={Keyboard.Shortcut.Common.Refresh}
-      />
-    </ActionPanel.Section>
+    ),
+    [
+      showDetail,
+      onAdd,
+      onAddSection,
+      onEditSection,
+      removeSection,
+      revaluate,
+      setShowDetail,
+    ]
   );
 
   const filterItems = (items?: TodoItem[]) => {
     if (!items) return [];
+
     return items.filter((item) => {
       switch (filter) {
         case 'all':
@@ -244,97 +203,34 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           subtitle={section.name ? section.items.length.toString() : undefined}
         >
           {filterItems(section.items).map((item, itemIndex) => (
-            <List.Item
-              key={getItemKey(itemIndex, sectionIndex)} // TODO: better key?
-              id={getItemKey(itemIndex, sectionIndex)}
-              icon={item.checked ? checkedIcon : uncheckedIcon}
-              title={item.content}
-              detail={
-                <List.Item.Detail
-                  markdown={getTodoMarkdown(item)}
-                  metadata={
-                    <List.Item.Detail.Metadata>
-                      <List.Item.Detail.Metadata.Label
-                        title="Todo"
-                        text={item.content}
-                      />
-                      <List.Item.Detail.Metadata.Label
-                        title="Status"
-                        text={item.checked ? 'Complete' : 'Incomplete'}
-                        icon={item.checked ? checkedIcon : uncheckedIcon}
-                      />
-                      <List.Item.Detail.Metadata.Label
-                        title="Description"
-                        text={item.description}
-                      />
-                      <List.Item.Detail.Metadata.Separator />
-                      {item.due && (
-                        <List.Item.Detail.Metadata.Label
-                          title="Due Date"
-                          text={item.due?.toLocaleString()}
-                        />
-                      )}
-                    </List.Item.Detail.Metadata>
-                  }
-                />
-              }
-              actions={
-                <ActionPanel>
-                  <ActionPanel.Section title="Item actions">
-                    <Action
-                      title={item.checked ? 'Uncheck' : 'Check'}
-                      onAction={() => toggleItem(itemIndex, sectionIndex)}
-                      icon={!item.checked ? Icon.Check : Icon.Xmark}
-                    />
-                    <Action
-                      title="Edit Item"
-                      onAction={() => onUpdate(itemIndex, sectionIndex)}
-                      icon={Icon.Pencil}
-                      shortcut={Keyboard.Shortcut.Common.Edit}
-                    />
-                    <Action
-                      title="Delete Item"
-                      onAction={() => removeItem(itemIndex, sectionIndex)}
-                      icon={Icon.Trash}
-                      shortcut={Keyboard.Shortcut.Common.Remove}
-                    />
-                    <Action
-                      title="Move Up"
-                      onAction={() => onMove(itemIndex, sectionIndex, 'up')}
-                      icon={Icon.ArrowUp}
-                      shortcut={Keyboard.Shortcut.Common.MoveUp}
-                    />
-                    <Action
-                      title="Move Down"
-                      onAction={() => onMove(itemIndex, sectionIndex, 'down')}
-                      icon={Icon.ArrowDown}
-                      shortcut={Keyboard.Shortcut.Common.MoveDown}
-                    />
-                  </ActionPanel.Section>
-                  {listActions(itemIndex, sectionIndex)}
-                </ActionPanel>
-              }
+            <TodoListItem
+              key={getItemKey(itemIndex, sectionIndex)}
+              item={item}
+              parentSection={section}
+              itemIndex={itemIndex}
+              sectionIndex={sectionIndex}
+              actionHandlers={{
+                // NOTE: this can be rewritten so that handlers do not need index! just pass an anonym func here with indices already wrapped
+                onMove,
+                onUpdate,
+                removeItem,
+                toggleItem,
+              }}
+              additionalActions={getListActions(itemIndex, sectionIndex)}
             />
           ))}
           {(sectionIndex === sections.length - 1 || !section.items.length) && (
-            <List.Item
-              key={getItemKey(-1, sectionIndex)}
-              id={getItemKey(-1, sectionIndex)}
-              icon={Icon.Plus}
-              title="Add item"
-              actions={
-                <ActionPanel>
-                  <ActionPanel.Section title="Item actions">
-                    <Action
-                      title="Add Item"
-                      onAction={() => onAdd(0, sectionIndex, true)}
-                      icon={Icon.Plus}
-                      shortcut={Keyboard.Shortcut.Common.New}
-                    />
-                  </ActionPanel.Section>
-                  {listActions(0, sectionIndex)}
-                </ActionPanel>
-              }
+            <AddNewListItem
+              sectionIndex={sectionIndex}
+              actionHandlers={{
+                onAdd: (sectionIndex) =>
+                  onAdd(
+                    section?.items?.length ? section.items.length - 1 : 0,
+                    sectionIndex,
+                    true
+                  ),
+              }}
+              additionalActions={getListActions(0, sectionIndex)}
             />
           )}
         </List.Section>

@@ -3,6 +3,7 @@ import { TodoItem, TodoSection } from '../core/types';
 import * as core from '../core';
 import { popToRoot, showToast, Toast } from '@raycast/api';
 
+// TODO: Cache data either here or in core/data.ts to ensure hook can be used in multiple components without re-parsing
 export const useTodo = (initialName?: string) => {
   const [name, setName] = useState(initialName);
   const [todoSections, setTodoSections] = useState<TodoSection[] | null>(null);
@@ -59,6 +60,10 @@ export const useTodo = (initialName?: string) => {
 
   useEffect(() => {
     init(name);
+
+    return () => {
+      init.cancel();
+    };
   }, [init, name]);
 
   const revaluate = useCallback(async () => {
