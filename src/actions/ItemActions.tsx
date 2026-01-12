@@ -16,7 +16,7 @@ type Props = {
 
 export const ItemActions = ({ item, actionHandlers }: Props) => {
   return (
-    <ActionPanel.Section title="Item actions">
+    <ActionPanel.Section title="Item">
       <Action
         title={item.checked ? CHECK_ACTION_LABEL : UNCHECK_ACTION_LABEL}
         onAction={() => actionHandlers.toggleItem()}
@@ -27,12 +27,6 @@ export const ItemActions = ({ item, actionHandlers }: Props) => {
         onAction={() => actionHandlers.onUpdate()}
         icon={Icon.Pencil}
         shortcut={Keyboard.Shortcut.Common.Edit}
-      />
-      <Action
-        title="Delete Item"
-        onAction={() => actionHandlers.removeItem()}
-        icon={Icon.Trash}
-        shortcut={Keyboard.Shortcut.Common.Remove}
       />
       {!!actionHandlers.onMove && (
         <>
@@ -50,6 +44,13 @@ export const ItemActions = ({ item, actionHandlers }: Props) => {
           />
         </>
       )}
+      <Action
+        title="Delete Item"
+        onAction={() => actionHandlers.removeItem()}
+        icon={Icon.Trash}
+        shortcut={Keyboard.Shortcut.Common.Remove}
+        style={Action.Style.Destructive}
+      />
     </ActionPanel.Section>
   );
 };

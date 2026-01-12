@@ -1,5 +1,6 @@
 import * as data from './data';
 import * as markdown from './markdown';
+import * as history from './history';
 import { TodoList, TodoSection } from './types';
 
 export const getTodoList = async (
@@ -69,3 +70,5 @@ export const redoTodoListChange = async (name: string) => {
 export const clearHistory = async (name: string) => {
   return await data.clearHistory(name);
 };
+
+export const canUndoRedo = history.canUndoRedo;

@@ -39,6 +39,8 @@ const unregister = async (name: string) => {
   }
 
   await LocalStorage.removeItem(getKey(name));
+
+  await history.clear(name);
 };
 
 const list = async () => {

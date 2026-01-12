@@ -8,6 +8,20 @@ export const useTodo = (initialName?: string) => {
   const [name, setName] = useState(initialName);
   const [todoSections, setTodoSections] = useState<TodoSection[] | null>(null);
 
+  useEffect(() => {
+    let aborted = false;
+    if (!initialName) {
+      core.getLatestTodoName().then((name) => {
+        if (aborted) return;
+        setName(name);
+      });
+    }
+
+    return () => {
+      aborted = true;
+    };
+  }, [initialName]);
+
   const init = useMemo(() => {
     let isRunning = false;
     const init = async (name?: string) => {
@@ -43,20 +57,6 @@ export const useTodo = (initialName?: string) => {
 
     return init;
   }, [setTodoSections, name]);
-
-  useEffect(() => {
-    let aborted = false;
-    if (!initialName) {
-      core.getLatestTodoName().then((name) => {
-        if (aborted) return;
-        setName(name);
-      });
-    }
-
-    return () => {
-      aborted = true;
-    };
-  }, [initialName]);
 
   useEffect(() => {
     init(name);
@@ -456,6 +456,33 @@ export const useTodo = (initialName?: string) => {
     [todoSections]
   );
 
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  useEffect(() => {
+    if (!name) {
+      setCanUndo(false);
+      setCanRedo(false);
+      return;
+    }
+
+    let aborted = false;
+    const updateCanUndoRedo = async () => {
+      const { hasUndo, hasRedo } = await core.canUndoRedo(name);
+
+      if (aborted) return;
+
+      setCanUndo(hasUndo);
+      setCanRedo(hasRedo);
+    };
+
+    updateCanUndoRedo();
+
+    return () => {
+      aborted = true;
+    };
+  }, [name, todoSections, setCanRedo, setCanUndo]);
+
   return {
     name,
     sections: todoSections,
@@ -477,5 +504,7 @@ export const useTodo = (initialName?: string) => {
     undo,
     redo,
     clearHistory,
+    canUndo,
+    canRedo,
   };
 };

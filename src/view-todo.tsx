@@ -5,16 +5,15 @@ import {
   Toast,
   useNavigation,
 } from '@raycast/api';
-import { useTodo } from './todo/useTodo';
 import { useCallback, useState } from 'react';
-import { TodoItem } from './core/types';
+import { useTodo } from './hooks/useTodo';
 import { EditTodoView } from './components/EditTodoView';
 import { EditSectionView } from './components/EditSectionView';
 import { TodoListItem } from './components/TodoListItem';
 import { ListActions } from './actions/ListActions';
 import { AddNewListItem } from './components/AddNewListItem';
-
-type TodoFilter = 'complete' | 'incomplete' | 'all';
+import { filterItems, TodoFilter } from './core/filters';
+import { ItemFilters } from './components/ItemFilters';
 
 const getItemKey = (itemIndex: number, sectionIndex: number) => {
   return `${itemIndex}-${sectionIndex}`;
@@ -22,8 +21,11 @@ const getItemKey = (itemIndex: number, sectionIndex: number) => {
 
 const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   const {
-    revaluate,
     sections,
+    canUndo,
+    canRedo,
+
+    revaluate,
     getItem,
     toggleItem,
     updateItem,
@@ -161,17 +163,19 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   };
 
   const getListActions = useCallback(
-    (itemIndex: number, sectionIndex: number) => (
+    (itemIndex: number, sectionIndex: number, sectionName?: string) => (
       <ListActions
         showDetail={showDetail}
         actionHandlers={{
           onAdd: () => onAdd(itemIndex, sectionIndex, false),
           onAddSection: () => onAddSection(sectionIndex, itemIndex),
           onEditSection: () => onEditSection(sectionIndex),
-          removeSection: (keepItems: boolean) =>
-            removeSection(sectionIndex, keepItems),
-          undo: onUndo,
-          redo: onRedo,
+          removeSection:
+            sectionIndex > 0 || sectionName
+              ? (keepItems: boolean) => removeSection(sectionIndex, keepItems)
+              : undefined,
+          undo: canUndo ? onUndo : undefined,
+          redo: canRedo ? onRedo : undefined,
           revaluate,
           clearHistory,
           setShowDetail,
@@ -184,25 +188,15 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
       onAddSection,
       onEditSection,
       removeSection,
+      undo,
+      redo,
+      canRedo,
+      canUndo,
       revaluate,
+      clearHistory,
       setShowDetail,
     ]
   );
-
-  const filterItems = (items?: TodoItem[]) => {
-    if (!items) return [];
-
-    return items.filter((item) => {
-      switch (filter) {
-        case 'all':
-          return true;
-        case 'complete':
-          return item.checked;
-        case 'incomplete':
-          return !item.checked;
-      }
-    });
-  };
 
   return (
     <List
@@ -210,19 +204,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
       selectedItemId={focusedItem}
       filtering={{ keepSectionOrder: true }}
       searchBarAccessory={
-        <List.Dropdown
-          storeValue={true}
-          tooltip="Filter"
-          value={filter}
-          defaultValue="all"
-          onChange={(value) => setFilter(value as TodoFilter)}
-        >
-          <List.Dropdown.Item title="All" value={'all'} />
-          <List.Dropdown.Section title="Status">
-            <List.Dropdown.Item title="Complete" value={'complete'} />
-            <List.Dropdown.Item title="Incomplete" value={'incomplete'} />
-          </List.Dropdown.Section>
-        </List.Dropdown>
+        <ItemFilters defaultFilter={filter} filterChanged={setFilter} />
       }
     >
       {sections?.map((section, sectionIndex) => (
@@ -231,7 +213,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           title={section.name}
           subtitle={section.name ? section.items.length.toString() : undefined}
         >
-          {filterItems(section.items).map((item, itemIndex) => (
+          {filterItems(section.items, filter).map((item, itemIndex) => (
             <TodoListItem
               id={getItemKey(itemIndex, sectionIndex)}
               key={getItemKey(itemIndex, sectionIndex)}
@@ -248,7 +230,11 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                 removeItem: () => removeItem(itemIndex, sectionIndex),
                 toggleItem: () => toggleItem(itemIndex, sectionIndex),
               }}
-              additionalActions={getListActions(itemIndex, sectionIndex)}
+              additionalActions={getListActions(
+                itemIndex,
+                sectionIndex,
+                section.name
+              )}
             />
           ))}
           {(sectionIndex === sections.length - 1 || !section.items.length) && (
@@ -262,7 +248,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                     true
                   ),
               }}
-              additionalActions={getListActions(0, sectionIndex)}
+              additionalActions={getListActions(0, sectionIndex, section.name)}
             />
           )}
         </List.Section>

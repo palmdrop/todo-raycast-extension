@@ -45,7 +45,6 @@ export const push = async (name: string, entry: HistoryEntry) => {
   await set(name, newHistory);
 };
 
-// TODO: need a redo stack as well
 export const pop = async (name: string, index = 0) => {
   const history = await get(name);
 
@@ -57,7 +56,7 @@ export const pop = async (name: string, index = 0) => {
     current: entry,
     redoStack: [history.current, ...history.redoStack]
       .filter(Boolean)
-      .slice(0, HISTORY_LENGTH) as HistoryEntry[], // NOTE: is this correct? feels weird
+      .slice(0, HISTORY_LENGTH) as HistoryEntry[],
   };
 
   await set(name, newHistory);
@@ -102,4 +101,12 @@ export const init = async (name: string, currentContent: string) => {
 
 export const clear = async (name: string) => {
   await LocalStorage.removeItem(getKey(name));
+};
+
+export const canUndoRedo = async (name: string) => {
+  const history = await get(name);
+  return {
+    hasUndo: history.undoStack.length > 0,
+    hasRedo: history.redoStack.length > 0,
+  };
 };
