@@ -2,11 +2,19 @@ import * as data from './data';
 import * as markdown from './markdown';
 import { TodoList, TodoSection } from './types';
 
-export const getTodoList = async (name: string): Promise<TodoList> => {
+export const getTodoList = async (
+  name: string,
+  shouldInitHistory = false
+): Promise<TodoList> => {
   if (!data.exists(name)) throw new Error(`Todo list "${name}" does not exist`);
 
   const todoListData = await data.readTodoList(name);
   const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
+
+  if (shouldInitHistory) {
+    await data.initHistory(name);
+  }
+
   return { name, sections };
 };
 
@@ -44,12 +52,20 @@ export const getLatestTodoName = async () => {
   return await data.getLatestTodoName();
 };
 
+export const initHistory = data.initHistory;
+
 export const undoTodoListChange = async (name: string) => {
   const todoListData = await data.undoTodoListChange(name);
   const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
   return { name, sections };
 };
 
+export const redoTodoListChange = async (name: string) => {
+  const todoListData = await data.redoTodoListChange(name);
+  const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
+  return { name, sections };
+};
+
 export const clearHistory = async (name: string) => {
-  return await data.clearUndoHistory(name);
+  return await data.clearHistory(name);
 };

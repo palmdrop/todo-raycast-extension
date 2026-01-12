@@ -8,39 +8,98 @@ type HistoryEntry = {
   content: string;
 };
 
+type History = {
+  undoStack: HistoryEntry[];
+  current: HistoryEntry | null;
+  redoStack: HistoryEntry[];
+};
+
 // TODO: make this configurable using preferences
 const HISTORY_LENGTH = 30;
 
-const getHistoryKey = (name: string) =>
+const getKey = (name: string) =>
   `${HISTORY_KEY_PREFIX}_${name.replaceAll(' ', '_')}`;
 
-export const getHistory = async (name: string) => {
-  const storedData = await LocalStorage.getItem<string>(getHistoryKey(name));
-  return storedData ? (JSON.parse(storedData) as HistoryEntry[]) : [];
+export const get = async (name: string): Promise<History> => {
+  const storedData = await LocalStorage.getItem<string>(getKey(name));
+  return storedData
+    ? (JSON.parse(storedData) as History)
+    : { undoStack: [], current: null, redoStack: [] };
 };
 
-const setHistory = async (name: string, history: HistoryEntry[]) => {
-  await LocalStorage.setItem(getHistoryKey(name), JSON.stringify(history));
+const set = async (name: string, history: History) => {
+  await LocalStorage.setItem(getKey(name), JSON.stringify(history));
 };
 
-export const pushHistory = async (name: string, entry: HistoryEntry) => {
-  const history = await getHistory(name);
-  const newHistory = [entry, ...history].slice(0, HISTORY_LENGTH);
-  await setHistory(name, newHistory);
+export const push = async (name: string, entry: HistoryEntry) => {
+  const history = await get(name);
+
+  const newHistory: History = {
+    undoStack: [history.current, ...history.undoStack]
+      .filter(Boolean)
+      .slice(0, HISTORY_LENGTH) as HistoryEntry[],
+    current: entry,
+    redoStack: [],
+  };
+
+  await set(name, newHistory);
 };
 
 // TODO: need a redo stack as well
-export const popHistory = async (name: string, index = 0) => {
-  const history = await getHistory(name);
+export const pop = async (name: string, index = 0) => {
+  const history = await get(name);
 
-  const entry = history[index + 1];
-  const newHistory = history.slice(index + 1);
+  if (!history.undoStack.length) return null;
 
-  await setHistory(name, newHistory);
+  const entry = history.undoStack[index];
+  const newHistory: History = {
+    undoStack: history.undoStack.slice(index + 1),
+    current: entry,
+    redoStack: [history.current, ...history.redoStack]
+      .filter(Boolean)
+      .slice(0, HISTORY_LENGTH) as HistoryEntry[], // NOTE: is this correct? feels weird
+  };
+
+  await set(name, newHistory);
 
   return entry;
 };
 
-export const clearHistory = async (name: string) => {
-  await LocalStorage.removeItem(getHistoryKey(name));
+export const popFromRedo = async (name: string, index = 0) => {
+  const history = await get(name);
+
+  if (!history.redoStack.length) {
+    return null;
+  }
+
+  const entry = history.redoStack[index];
+  const newHistory = {
+    undoStack: [history.current, ...history.undoStack]
+      .filter(Boolean)
+      .slice(0, HISTORY_LENGTH) as HistoryEntry[],
+    current: entry,
+    redoStack: history.redoStack.slice(index + 1),
+  };
+
+  await set(name, newHistory);
+
+  return entry;
+};
+
+export const init = async (name: string, currentContent: string) => {
+  const currentHistory = await get(name);
+  const current = currentHistory.current;
+
+  if (current && current.content === currentContent) {
+    return;
+  }
+
+  await push(name, {
+    dateTime: new Date().toISOString(),
+    content: currentContent,
+  });
+};
+
+export const clear = async (name: string) => {
+  await LocalStorage.removeItem(getKey(name));
 };

@@ -2,15 +2,15 @@ import {
   Action,
   ActionPanel,
   Form,
+  launchCommand,
+  LaunchType,
   showToast,
   Toast,
-  useNavigation,
 } from '@raycast/api';
 import { useEffect, useState } from 'react';
 import fs from 'fs';
 import { FormValidation, useForm } from '@raycast/utils';
 import { addExistingTodoList, createTodoList } from './core/data';
-import ListTodos from './list-todos';
 
 type Values = {
   name: string;
@@ -25,8 +25,6 @@ const getFileNameFromTodoName = (name: string) => {
 
 export default function Command() {
   const [directorySelected, setDirectorySelected] = useState(false);
-
-  const { push } = useNavigation();
 
   const { handleSubmit, itemProps, values /*, setValidationError */ } =
     useForm<Values>({
@@ -46,7 +44,9 @@ export default function Command() {
               `Added existing todo list ${files[0]} as ${name}`
             );
           }
-          push(<ListTodos />);
+
+          // push(<ListTodos />);
+          launchCommand({ name: 'list-todos', type: LaunchType.UserInitiated });
         } catch (error) {
           showToast(Toast.Style.Failure, (error as Error).message);
           // TODO: setValidationError to name/files

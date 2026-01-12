@@ -15,7 +15,7 @@ export const useTodo = (initialName?: string) => {
       try {
         if (!name || init.aborted) return;
 
-        const { sections } = await core.getTodoList(name);
+        const { sections } = await core.getTodoList(name, true);
         if (init.aborted) return;
 
         setTodoSections(sections);
@@ -432,15 +432,21 @@ export const useTodo = (initialName?: string) => {
     if (!name) return;
 
     const restoredTodo = await core.undoTodoListChange(name);
-    // await update(restoredTodo.sections);
     setTodoSections(restoredTodo.sections);
-  }, [update]);
+  }, [name, setTodoSections]);
+
+  const redo = useCallback(async () => {
+    if (!name) return;
+
+    const restoredTodo = await core.redoTodoListChange(name);
+    setTodoSections(restoredTodo.sections);
+  }, [name, setTodoSections]);
 
   const clearHistory = useCallback(async () => {
     if (!name) return;
 
     await core.clearHistory(name);
-  }, []);
+  }, [name]);
 
   const getItem = useCallback(
     (itemIndex: number, sectionIndex = 0) => {
@@ -469,6 +475,7 @@ export const useTodo = (initialName?: string) => {
     addSection,
     removeSection,
     undo,
+    redo,
     clearHistory,
   };
 };

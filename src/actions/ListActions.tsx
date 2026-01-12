@@ -9,6 +9,7 @@ export type TodoListActionHandlers = {
     showingDetail: boolean | ((previousValue: boolean) => boolean)
   ) => void;
   undo: () => void;
+  redo: () => void;
   clearHistory: () => void;
   revaluate: () => void;
 };
@@ -65,6 +66,12 @@ export const ListActions = ({ showDetail, actionHandlers }: Props) => {
         onAction={actionHandlers.undo}
         icon={Icon.Undo}
         shortcut={{ modifiers: ['cmd'], key: 'z' }}
+      />
+      <Action
+        title="Redo"
+        onAction={actionHandlers.redo}
+        icon={Icon.Redo}
+        shortcut={{ modifiers: ['cmd', 'shift'], key: 'z' }}
       />
       <Action
         title="Clear History"

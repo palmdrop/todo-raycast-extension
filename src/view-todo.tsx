@@ -36,6 +36,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     addSection,
     removeSection,
     undo,
+    redo,
     clearHistory,
   } = useTodo(props.arguments.name);
 
@@ -99,7 +100,11 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
       return;
     }
 
-    setFocusedItem(getItemKey(newIndices.itemIndex, newIndices.sectionIndex));
+    // NOTE: this "fixes" is a weird race condition that prevents update order issues...
+    setTimeout(() => {
+      // NOTE: I think I need to set a better key for the todos
+      setFocusedItem(getItemKey(newIndices.itemIndex, newIndices.sectionIndex));
+    }, 10);
   };
 
   const onEditSection = (sectionIndex: number) => {
@@ -135,6 +140,26 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     );
   };
 
+  const onUndo = async () => {
+    try {
+      await undo();
+    } catch (error) {
+      console.error(error);
+      // NOTE: no distinction between error and no history
+      showToast(Toast.Style.Failure, 'Nothing to undo');
+    }
+  };
+
+  const onRedo = async () => {
+    try {
+      await redo();
+    } catch (error) {
+      console.error(error);
+      // NOTE: no distinction between error and no history
+      showToast(Toast.Style.Failure, 'Nothing to redo');
+    }
+  };
+
   const getListActions = useCallback(
     (itemIndex: number, sectionIndex: number) => (
       <ListActions
@@ -145,7 +170,8 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           onEditSection: () => onEditSection(sectionIndex),
           removeSection: (keepItems: boolean) =>
             removeSection(sectionIndex, keepItems),
-          undo,
+          undo: onUndo,
+          redo: onRedo,
           revaluate,
           clearHistory,
           setShowDetail,
@@ -212,9 +238,12 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
               item={item}
               parentSection={section}
               actionHandlers={{
-                // NOTE: this can be rewritten so that handlers do not need index! just pass an anonym func here with indices already wrapped
-                onMove: (direction) =>
-                  onMove(itemIndex, sectionIndex, direction),
+                // NOTE: move does not work when filtering is applied
+                onMove:
+                  // NOTE: Only allow reordering when not filtering
+                  filter === 'all'
+                    ? (direction) => onMove(itemIndex, sectionIndex, direction)
+                    : undefined,
                 onUpdate: () => onUpdate(itemIndex, sectionIndex),
                 removeItem: () => removeItem(itemIndex, sectionIndex),
                 toggleItem: () => toggleItem(itemIndex, sectionIndex),

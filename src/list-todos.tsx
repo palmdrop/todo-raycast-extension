@@ -29,7 +29,7 @@ export default function Command() {
       {todos?.data?.map((todo) => (
         <List.Item
           key={todo.name}
-          title={todo.name}
+          title={todo.name ?? 'what'}
           subtitle={todo.filePath}
           icon={Icon.Ticket}
           actions={

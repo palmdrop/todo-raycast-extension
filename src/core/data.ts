@@ -1,8 +1,7 @@
 import { LocalStorage } from '@raycast/api';
 import { existsSync, statSync } from 'fs';
 import fs from 'fs/promises';
-import { popHistory, pushHistory } from './history';
-import { clearHistory } from './history';
+import * as history from './history';
 
 type TodoListData = {
   name: string;
@@ -52,6 +51,7 @@ const list = async () => {
   return todoItems;
 };
 
+// TODO: cache this since it is also read when undoing/redoing
 const read = async (name: string) => {
   const todo = await get(name);
   if (!todo) {
@@ -70,7 +70,7 @@ const write = async (name: string, content: string, pushToHistory = true) => {
   await fs.writeFile(todo.filePath, content, 'utf-8');
 
   if (pushToHistory) {
-    await pushHistory(name, {
+    await history.push(name, {
       dateTime: new Date().toISOString(),
       content,
     });
@@ -78,13 +78,23 @@ const write = async (name: string, content: string, pushToHistory = true) => {
 };
 
 const restore = async (name: string, index = 0) => {
-  const previous = await popHistory(name, index);
+  const previous = await history.pop(name, index);
 
   if (!previous) throw new Error('No history to restore');
 
   await write(name, previous.content, false);
 
   return previous.content;
+};
+
+const redo = async (name: string, index = 0) => {
+  const next = await history.popFromRedo(name, index);
+
+  if (!next) throw new Error('No history to redo');
+
+  await write(name, next.content, false);
+
+  return next.content;
 };
 
 const setLatest = async (name: string) => {
@@ -179,13 +189,8 @@ export const createTodoList = async (
   await register(filePath, name);
 };
 
-export const removeTodoList = async (name: string) => {
-  await unregister(name);
-};
-
-export const listTodoLists = async () => {
-  return await list();
-};
+export const removeTodoList = unregister;
+export const listTodoLists = list;
 
 export const readTodoList = async (name: string) => {
   const todo = await read(name);
@@ -202,10 +207,16 @@ export const getLatestTodoName = async () => {
   return await LocalStorage.getItem<string>(LATEST_TODO_KEY);
 };
 
-export const undoTodoListChange = async (name: string) => {
-  return await restore(name);
+export const undoTodoListChange = restore;
+export const redoTodoListChange = redo;
+
+export const initHistory = async (name: string) => {
+  // TODO: cache read, session only. File is read twice during init otherwise
+  const todo = await read(name);
+  await history.init(name, todo);
 };
 
-export const clearUndoHistory = async (name: string) => {
-  return await clearHistory(name);
+export const clearHistory = async (name: string) => {
+  await history.clear(name);
+  await initHistory(name);
 };

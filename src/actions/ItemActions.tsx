@@ -6,7 +6,7 @@ export type ItemActionHandlers = {
   toggleItem: () => void;
   onUpdate: () => void;
   removeItem: () => void;
-  onMove: (direction: 'up' | 'down') => void;
+  onMove?: (direction: 'up' | 'down') => void;
 };
 
 type Props = {
@@ -34,18 +34,22 @@ export const ItemActions = ({ item, actionHandlers }: Props) => {
         icon={Icon.Trash}
         shortcut={Keyboard.Shortcut.Common.Remove}
       />
-      <Action
-        title="Move Up"
-        onAction={() => actionHandlers.onMove('up')}
-        icon={Icon.ArrowUp}
-        shortcut={Keyboard.Shortcut.Common.MoveUp}
-      />
-      <Action
-        title="Move Down"
-        onAction={() => actionHandlers.onMove('down')}
-        icon={Icon.ArrowDown}
-        shortcut={Keyboard.Shortcut.Common.MoveDown}
-      />
+      {!!actionHandlers.onMove && (
+        <>
+          <Action
+            title="Move Up"
+            onAction={() => actionHandlers.onMove!('up')}
+            icon={Icon.ArrowUp}
+            shortcut={Keyboard.Shortcut.Common.MoveUp}
+          />
+          <Action
+            title="Move Down"
+            onAction={() => actionHandlers.onMove!('down')}
+            icon={Icon.ArrowDown}
+            shortcut={Keyboard.Shortcut.Common.MoveDown}
+          />
+        </>
+      )}
     </ActionPanel.Section>
   );
 };
