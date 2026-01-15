@@ -1,23 +1,23 @@
 import { Action, ActionPanel, Icon, Keyboard, List } from '@raycast/api';
-import { getItemKey } from '../utils/key';
+import { SectionUUID } from '../core/types';
 
 type Props = {
-  sectionIndex: number;
+  sectionId: SectionUUID;
   actionHandlers: {
-    onAdd: (sectionIndex: number) => void;
+    onAdd: (sectionId: SectionUUID) => void;
   };
   additionalActions: React.ReactNode;
 };
 
 export const AddNewListItem = ({
-  sectionIndex,
+  sectionId,
   actionHandlers,
   additionalActions,
 }: Props) => {
   return (
     <List.Item
-      key={getItemKey(-1, sectionIndex)}
-      id={getItemKey(-1, sectionIndex)}
+      key={`add-item-${sectionId}`}
+      id={`add-item-${sectionId}`}
       icon={Icon.Plus}
       title="Add item"
       actions={
@@ -25,7 +25,7 @@ export const AddNewListItem = ({
           <ActionPanel.Section title="Item actions">
             <Action
               title="Add Item"
-              onAction={() => actionHandlers.onAdd(sectionIndex)}
+              onAction={() => actionHandlers.onAdd(sectionId)}
               icon={Icon.Plus}
               shortcut={Keyboard.Shortcut.Common.New}
             />

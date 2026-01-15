@@ -1,9 +1,9 @@
 import { Action, ActionPanel, Icon, Keyboard } from '@raycast/api';
 
 export type TodoListActionHandlers = {
-  onAdd: () => void;
+  onAdd?: (mode: 'before' | 'after') => void;
   onEditSection: () => void;
-  onAddSection: () => void;
+  onAddSection?: () => void;
   removeSection?: (keepItems: boolean) => void;
   setShowDetail: (
     showingDetail: boolean | ((previousValue: boolean) => boolean)
@@ -23,20 +23,22 @@ export const ListActions = ({ showDetail, actionHandlers }: Props) => {
   return (
     <>
       <ActionPanel.Section title="New">
-        <Action
-          title="Add Item"
-          onAction={actionHandlers.onAdd}
-          icon={Icon.Plus}
-          shortcut={Keyboard.Shortcut.Common.New}
-        />
+        {actionHandlers.onAdd && (
+          <Action
+            title="Add Item"
+            onAction={() => actionHandlers.onAdd!('after')}
+            icon={Icon.Plus}
+            shortcut={Keyboard.Shortcut.Common.New}
+          />
+        )}
         <Action
           title="Add Item Before"
-          onAction={actionHandlers.onAdd}
+          onAction={() => actionHandlers.onAdd!('before')}
           icon={Icon.Plus}
         />
         <Action
           title="Add Item After"
-          onAction={actionHandlers.onAdd}
+          onAction={() => actionHandlers.onAdd!('after')}
           icon={Icon.Plus}
         />
       </ActionPanel.Section>
@@ -46,11 +48,13 @@ export const ListActions = ({ showDetail, actionHandlers }: Props) => {
           onAction={actionHandlers.onEditSection}
           icon={Icon.Pencil}
         />
-        <Action
-          title="Add Section"
-          onAction={actionHandlers.onAddSection}
-          icon={Icon.Pencil}
-        />
+        {actionHandlers.onAddSection && (
+          <Action
+            title="Add Section"
+            onAction={actionHandlers.onAddSection}
+            icon={Icon.Pencil}
+          />
+        )}
         {actionHandlers.removeSection && (
           <Action
             title="Delete Section"

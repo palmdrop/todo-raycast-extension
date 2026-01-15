@@ -1,4 +1,5 @@
 import { TodoItem, TodoList, TodoSection } from './types';
+import { createItem, createSection } from './utils';
 
 const TODO_REGEX = /^- \[(x|X| )?\] (.*)/;
 const SECTION_REGEX = /^# (.*)/;
@@ -33,7 +34,7 @@ const todoItemToMarkdown = (todoItem: TodoItem) => {
 
   const properties = (
     Object.keys(todoItem).filter(
-      (key) => !['content', 'checked', 'description'].includes(key)
+      (key) => !['id', 'content', 'checked', 'description'].includes(key)
     ) as AdditionalProperties[]
   )
     .map(printProperty)
@@ -56,8 +57,7 @@ const todoSectionToMarkdown = (section: TodoSection) => {
 export const parseTodoItemsFromMarkdown = (markdown: string) => {
   const contentWithoutFrontmatter = removeFrontmatter(markdown);
 
-  const sections: { name?: string; items: TodoItem[] }[] = [];
-  // const todoItems: TodoItem[] = [];
+  const sections: TodoSection[] = [];
 
   const lines = contentWithoutFrontmatter.split('\n');
   const before: string[] = [];
@@ -116,10 +116,11 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
         currentPool = [];
       }
 
-      sections.push({
-        name,
-        items: [],
-      });
+      sections.push(
+        createSection({
+          name,
+        })
+      );
 
       continue;
     }
@@ -135,9 +136,7 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
     }
 
     if (!sections.length) {
-      sections.push({
-        items: [],
-      });
+      sections.push(createSection());
     }
 
     const currentSection = sections.at(-1)!;
@@ -153,12 +152,14 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
       (match[1].trim() === 'x' || match[1].trim() === 'X')
     );
 
-    todoItems.push({
-      checked,
-      content: match[2],
-      description: '',
-      due: null,
-    });
+    todoItems.push(
+      createItem({
+        checked,
+        content: match[2],
+        description: '',
+        due: null,
+      })
+    );
   }
 
   if (currentPool.length) {
@@ -170,9 +171,7 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
   }
 
   if (!sections.length) {
-    sections.push({
-      items: [],
-    });
+    sections.push(createSection());
   }
 
   return { sections, before, after };

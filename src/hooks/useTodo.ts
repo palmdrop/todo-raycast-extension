@@ -1,7 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { TodoItem, TodoSection } from '../core/types';
+import { ItemUUID, SectionUUID, TodoItem, TodoSection } from '../core/types';
 import * as core from '../core';
 import { popToRoot, showToast, Toast } from '@raycast/api';
+import { createItem, createSection } from '../core/utils';
+import { wrap } from '../utils/wrap';
+
+type ItemLookupMap = Map<
+  ItemUUID,
+  {
+    item: TodoItem;
+    itemIndex: number;
+    parentSection: TodoSection;
+    parentSectionIndex: number;
+  }
+>;
+type SectionLookupMap = Map<
+  SectionUUID,
+  { section: TodoSection; sectionIndex: number }
+>;
 
 // TODO: Cache data either here or in core/data.ts to ensure hook can be used in multiple components without re-parsing
 export const useTodo = (initialName?: string) => {
@@ -73,46 +89,100 @@ export const useTodo = (initialName?: string) => {
 
   const commit = useCallback(
     async (todoSections: TodoSection[]) => {
-      return await core.updateTodoItems(name!, todoSections);
+      if (!name) return;
+      return await core.updateTodoItems(name, todoSections);
     },
     [name]
   );
 
-  const update = useCallback(
-    async (
+  const update = useMemo(() => {
+    const itemLookup = new Map(
+      todoSections?.flatMap((section, sectionIndex) =>
+        section.items.map((item, itemIndex) => [
+          item.id,
+          {
+            item,
+            itemIndex,
+            parentSection: section,
+            parentSectionIndex: sectionIndex,
+          },
+        ])
+      ) ?? []
+    );
+
+    const sectionLookup = new Map(
+      todoSections?.map((section, sectionIndex) => [
+        section.id,
+        { section, sectionIndex },
+      ]) ?? []
+    );
+
+    return async (
       sections:
         | TodoSection[]
-        | ((current: TodoSection[] | null) => TodoSection[])
+        | ((
+            current: TodoSection[] | null,
+            itemLookup: ItemLookupMap,
+            sectionLookup: SectionLookupMap
+          ) => TodoSection[])
     ) => {
       const newSections =
-        typeof sections === 'function' ? sections(todoSections) : sections;
+        typeof sections === 'function'
+          ? sections(todoSections, itemLookup, sectionLookup)
+          : sections;
 
       await commit(newSections);
-      revaluate();
-    },
-    [commit, revaluate, todoSections]
-  );
+      // revaluate();
+      setTodoSections(newSections);
+    };
+  }, [commit, revaluate, todoSections]);
 
   const updateSection = useCallback(
-    (
-      section: TodoSection | ((previousSection: TodoSection) => TodoSection),
-      index: number
+    async (
+      section:
+        | TodoSection
+        | ((
+            previousSection: TodoSection,
+            itemLookup: ItemLookupMap,
+            sectionIndex: number
+          ) => TodoSection | null),
+      id: { sectionId: SectionUUID } | { itemId: ItemUUID }
     ) => {
-      update((previousSections) => {
+      return await update((previousSections, itemLookup, sectionLookup) => {
         if (!previousSections) return [];
 
-        if (previousSections.length <= index) {
-          throw new Error('No section at index ' + index);
+        let sectionId: SectionUUID | undefined = (
+          id as { sectionId: SectionUUID }
+        ).sectionId;
+
+        if (!sectionId) {
+          sectionId = itemLookup.get((id as { itemId: ItemUUID }).itemId)
+            ?.parentSection.id;
+
+          if (!sectionId) {
+            throw new Error('Item does not belong to a section.');
+          }
         }
 
-        const previousSection = previousSections[index];
+        const sectionData = sectionLookup.get(sectionId);
+        if (!sectionData) {
+          throw new Error('No section with ID ' + id);
+        }
+
         const newSection =
-          typeof section === 'function' ? section(previousSection) : section;
+          typeof section === 'function'
+            ? section(sectionData.section, itemLookup, sectionData.sectionIndex)
+            : section;
+
+        // Disallow deleting the last section
+        if (!newSection && previousSections.length === 1) {
+          return previousSections;
+        }
 
         return [
-          ...previousSections.slice(0, index),
-          newSection,
-          ...previousSections.slice(index + 1),
+          ...previousSections.slice(0, sectionData.sectionIndex),
+          ...(newSection ? [newSection] : []),
+          ...previousSections.slice(sectionData.sectionIndex + 1),
         ];
       });
     },
@@ -122,61 +192,77 @@ export const useTodo = (initialName?: string) => {
   const updateItem = useCallback(
     async (
       item: Partial<TodoItem> | ((item: TodoItem) => Partial<TodoItem>),
-      itemIndex: number,
-      sectionIndex = 0
+      id: ItemUUID
     ) => {
-      updateSection((previousSection) => {
-        if (previousSection.items.length <= itemIndex) {
-          throw new Error('No todo item at index ' + itemIndex);
-        }
+      return updateSection(
+        (previousSection, itemLookup) => {
+          const itemData = itemLookup.get(id);
 
-        const newSection = previousSection.items.map((existingItem, i) =>
-          itemIndex !== i
-            ? existingItem
-            : {
-                ...existingItem,
-                ...(typeof item === 'function' ? item(existingItem) : item),
-              }
-        );
+          if (!itemData) {
+            throw new Error('No todo item with ID ' + id);
+          }
 
-        return {
-          ...previousSection,
-          items: newSection,
-        };
-      }, sectionIndex);
+          const { item: previousItem, itemIndex } = itemData;
+
+          const newSection = {
+            ...previousSection,
+            items: [
+              ...previousSection.items.slice(0, itemIndex),
+              {
+                ...previousItem,
+                ...(typeof item === 'function' ? item(previousItem) : item),
+                id: previousItem.id,
+              },
+              ...previousSection.items.slice(itemIndex + 1),
+            ],
+          };
+
+          return newSection;
+        },
+        { itemId: id }
+      );
     },
     [update]
   );
 
   const toggleItem = useCallback(
-    async (index: number, sectionIndex = 0) => {
+    async (id: ItemUUID) => {
       updateItem(
         (item) => ({
           ...item,
           checked: !item.checked,
         }),
-        index,
-        sectionIndex
+        id
       );
     },
     [update]
   );
 
   const removeItem = useCallback(
-    async (itemIndex: number, sectionIndex = 0) => {
-      updateSection((previousSection) => {
-        if (previousSection.items.length <= itemIndex) {
-          throw new Error('No todo item at index ' + itemIndex);
-        }
+    async (id: ItemUUID) => {
+      // NOTE: does nothing if item does not exist
+      updateSection(
+        (previousSection, _, sectionIndex) => {
+          const newItems = previousSection.items.filter(
+            (item) => item.id !== id
+          );
 
-        const newItems = previousSection.items.filter(
-          (_, i) => i !== itemIndex
-        );
-        return {
-          ...previousSection,
-          items: newItems,
-        };
-      }, sectionIndex);
+          // If the section is empty, unnamed and it is the first section, remove it.
+          if (
+            !previousSection.name &&
+            sectionIndex === 0 &&
+            newItems.length === 0
+          ) {
+            return null;
+          }
+
+          return {
+            ...previousSection,
+            items: newItems,
+          };
+        },
+        { itemId: id }
+      );
     },
     [update]
   );
@@ -184,243 +270,252 @@ export const useTodo = (initialName?: string) => {
   const addItem = useCallback(
     async (
       item: TodoItem,
-      itemIndex: number,
-      sectionIndex = 0,
-      after?: boolean
+      at:
+        | { itemId: ItemUUID; mode?: 'before' | 'after' }
+        | { sectionId: SectionUUID; mode?: 'first' | 'last' }
     ) => {
-      updateSection((previousSection) => {
-        if (itemIndex < 0 || itemIndex > previousSection.items.length) {
-          throw new Error('Index out of bounds');
+      updateSection((previousSection, itemLookup) => {
+        if ('sectionId' in at) {
+          return {
+            ...previousSection,
+            items: [
+              ...(at.mode === 'last' ? [] : previousSection.items),
+              item,
+              ...(at.mode === 'first' ? [] : previousSection.items),
+            ],
+          };
+        }
+
+        const itemData = itemLookup.get(at.itemId);
+
+        if (!itemData) {
+          throw new Error('No item with ID ' + at.itemId);
+        }
+
+        if (itemData.parentSection.id !== previousSection.id) {
+          throw new Error('Item does not belong to this section');
         }
 
         const newItems = [...previousSection.items];
-        newItems.splice(itemIndex + (after ? 1 : 0), 0, item);
+        newItems.splice(
+          itemData.itemIndex + (at.mode === 'after' ? 1 : 0),
+          0,
+          item
+        );
 
         return {
           ...previousSection,
           items: newItems,
         };
-      }, sectionIndex);
+      }, at);
     },
     [update]
   );
 
-  const createItem = useCallback(async (initialFields?: Partial<TodoItem>) => {
-    const item: TodoItem = {
-      checked: false,
-      content: '',
-      description: '',
-      due: null,
-      ...(initialFields ?? {}),
-    };
+  const swap = useCallback(
+    (
+      itemId1: ItemUUID,
+      itemId2: ItemUUID,
+      previousSections: TodoSection[],
+      itemLookup: ItemLookupMap
+    ) => {
+      const itemData1 = itemLookup.get(itemId1);
+      const itemData2 = itemLookup.get(itemId2);
 
-    return item;
-  }, []);
+      if (!itemData1) {
+        throw new Error('No item with ID ' + itemId1);
+      }
 
-  const createSection = useCallback(
-    async (initialFields?: Partial<TodoSection>) => {
-      const section: TodoSection = {
-        name: '',
-        items: [],
-        ...(initialFields ?? {}),
-      };
+      if (!itemData2) {
+        throw new Error('No item with ID ' + itemId2);
+      }
 
-      return section;
+      const newSections = [...previousSections];
+
+      const section1 = itemData1.parentSection;
+      const section2 = itemData2.parentSection;
+
+      const itemA = section1.items[itemData1.itemIndex];
+      const itemB = section2.items[itemData2.itemIndex];
+      section1.items[itemData1.itemIndex] = itemB;
+      section2.items[itemData2.itemIndex] = itemA;
+
+      return newSections;
     },
     []
   );
 
   const swapItems = useCallback(
-    async (
-      itemIndexA: number,
-      sectionIndexA: number,
-      itemIndexB: number,
-      sectionIndexB: number
-    ) => {
-      update((previousSections) => {
+    async (itemId1: ItemUUID, itemId2: ItemUUID) => {
+      update((previousSections, itemLookup) => {
         if (!previousSections) return [];
-
-        if (sectionIndexA < 0 || sectionIndexA >= previousSections.length) {
-          throw new Error('Section index A out of bounds');
-        }
-
-        if (sectionIndexB < 0 || sectionIndexB >= previousSections.length) {
-          throw new Error('Section index B out of bounds');
-        }
-
-        const newSections = [...previousSections];
-
-        const sectionA = newSections[sectionIndexA];
-        const sectionB = newSections[sectionIndexB];
-
-        if (itemIndexA < 0 || itemIndexA >= sectionA.items.length) {
-          throw new Error('Item index A out of bounds');
-        }
-
-        if (itemIndexB < 0 || itemIndexB >= sectionB.items.length) {
-          throw new Error('Item index B out of bounds');
-        }
-
-        const itemA = sectionA.items[itemIndexA];
-        const itemB = sectionB.items[itemIndexB];
-        sectionA.items[itemIndexA] = itemB;
-        sectionB.items[itemIndexB] = itemA;
-
-        return newSections;
+        return swap(itemId1, itemId2, previousSections, itemLookup);
       });
     },
     [update]
   );
 
   const moveItem = useCallback(
-    async (
-      itemIndex: number,
-      sectionIndex: number,
-      direction: 'up' | 'down'
-    ) => {
-      if (!todoSections) return null;
+    async (itemId: ItemUUID, direction: 'up' | 'down') => {
+      update((previousSections, itemLookup, sectionLookup) => {
+        if (!previousSections) return [];
 
-      const sourceSectionIndex = sectionIndex;
-      const sourceItemIndex = itemIndex;
-      const sourceSection = todoSections[sourceSectionIndex];
+        const itemData = itemLookup.get(itemId);
 
-      let targetSectionIndex = sourceSectionIndex;
-      let targetIndex;
+        if (!itemData) {
+          throw new Error('No item with ID ' + itemId);
+        }
 
-      if (direction === 'up' && sourceItemIndex === 0) {
-        targetSectionIndex--;
-      } else if (
-        direction === 'down' &&
-        itemIndex === sourceSection.items.length - 1
-      ) {
-        targetSectionIndex++;
-      }
+        const sectionData = sectionLookup.get(itemData.parentSection.id);
 
-      if (targetSectionIndex < 0) {
-        targetSectionIndex = todoSections.length - 1;
-      } else if (targetSectionIndex > todoSections.length - 1) {
-        targetSectionIndex = 0;
-      }
+        if (!sectionData) {
+          throw new Error('No section with ID ' + itemData.parentSection.id);
+        }
 
-      const targetSection = todoSections[targetSectionIndex];
+        // Stays within the same section
+        if (
+          (direction === 'up' && itemData.itemIndex > 0) ||
+          (direction === 'down' &&
+            itemData.itemIndex < sectionData.section.items.length - 1) ||
+          previousSections.length === 0
+        ) {
+          const targetItemIndex = wrap(
+            itemData.itemIndex + (direction === 'up' ? -1 : 1),
+            0,
+            sectionData.section.items.length
+          );
 
-      if (targetSectionIndex === sourceSectionIndex) {
-        targetIndex = sourceItemIndex + (direction === 'up' ? -1 : 1);
-      } else {
-        targetIndex = direction === 'up' ? targetSection.items.length : 0;
-      }
+          const targetItem = sectionData.section.items[targetItemIndex];
+          return swap(
+            itemData.item.id,
+            targetItem.id,
+            previousSections,
+            itemLookup
+          );
+        }
 
-      if (targetSectionIndex === sourceSectionIndex) {
-        await swapItems(
-          sourceItemIndex,
-          sourceSectionIndex,
-          targetIndex,
-          targetSectionIndex
+        // Move to a different section
+        const targetSectionIndex = wrap(
+          direction === 'up'
+            ? sectionData.sectionIndex - 1
+            : sectionData.sectionIndex + 1,
+          0,
+          previousSections.length
         );
-      } else {
-        await update((previousSections) => {
-          if (!previousSections) return [];
 
-          const newSections = [...previousSections];
-          const sourceSection = newSections[sourceSectionIndex];
-          const targetSection = newSections[targetSectionIndex];
+        console.log(targetSectionIndex);
 
-          const [item] = sourceSection.items.splice(sourceItemIndex, 1);
-          targetSection.items.splice(targetIndex, 0, item);
+        const targetSection = previousSections[targetSectionIndex];
 
-          return newSections;
-        });
-      }
+        if (direction === 'up') {
+          targetSection.items.push(itemData.item);
+        } else {
+          targetSection.items.unshift(itemData.item);
+        }
 
-      return {
-        sectionIndex: targetSectionIndex,
-        itemIndex: targetIndex,
-      };
+        sectionData.section.items.splice(itemData.itemIndex, 1);
+
+        return previousSections
+          .map((section, index) => {
+            if (index === targetSectionIndex) {
+              return targetSection;
+            }
+
+            if (index === sectionData.sectionIndex) {
+              // Delete empty, unnamed first section (but only if there are other sections)
+              if (
+                sectionData.sectionIndex === 0 &&
+                !section.name &&
+                previousSections.length > 1
+              ) {
+                return null;
+              }
+
+              return sectionData.section;
+            }
+
+            return section;
+          })
+          .filter(Boolean) as TodoSection[];
+      });
     },
     [swapItems, todoSections]
   );
 
   const addSection = useCallback(
-    async (
-      section: TodoSection,
-      afterSectionIndex: number,
-      insertAtTodoIndex?: number
-    ) => {
-      await update((previousSections) => {
+    (section: TodoSection, insertAtTodoId: ItemUUID) => {
+      return update((previousSections, itemLookup, sectionLookup) => {
         if (!previousSections) {
-          previousSections = [];
+          return [section];
         }
 
-        if (
-          afterSectionIndex < 0 ||
-          afterSectionIndex > previousSections?.length
-        ) {
-          throw new Error('Section index out of bounds');
+        const todoData = itemLookup.get(insertAtTodoId);
+
+        if (!todoData) {
+          throw new Error('No item with ID ' + insertAtTodoId);
         }
 
-        if (insertAtTodoIndex !== undefined) {
-          if (
-            afterSectionIndex < 0 ||
-            afterSectionIndex > previousSections.length - 1
-          ) {
-            throw new Error('Section index out of bounds');
-          }
+        const sectionBefore = todoData.parentSection;
+        const sectionData = sectionLookup.get(sectionBefore.id);
 
-          const sectionBefore = previousSections[afterSectionIndex];
-
-          if (
-            insertAtTodoIndex < 0 ||
-            sectionBefore.items.length < insertAtTodoIndex
-          ) {
-            throw new Error('Item index out of bounds');
-          }
-
-          const itemsInNewSection = sectionBefore.items.slice(
-            insertAtTodoIndex + 1
-          );
-
-          sectionBefore.items = sectionBefore.items.slice(
-            0,
-            insertAtTodoIndex + 1
-          );
-          section.items.push(...itemsInNewSection);
+        if (!sectionData) {
+          throw new Error('No section with ID ' + sectionBefore.id);
         }
+
+        const itemsInNewSection = sectionBefore.items.slice(
+          todoData.itemIndex + 1
+        );
+
+        sectionBefore.items = sectionBefore.items.slice(
+          0,
+          todoData.itemIndex + 1
+        );
+
+        section.items.push(...itemsInNewSection);
 
         return [
-          ...previousSections.slice(0, afterSectionIndex + 1),
+          ...previousSections.slice(0, sectionData.sectionIndex + 1),
           section,
-          ...previousSections.slice(afterSectionIndex + 1),
+          ...previousSections.slice(sectionData.sectionIndex + 1),
         ];
       });
-
-      return { section, index: afterSectionIndex + 1 };
     },
     [update]
   );
 
   const removeSection = useCallback(
-    async (sectionIndex: number, keepItems?: boolean) => {
-      await update((previousSections) => {
+    async (sectionId: SectionUUID, keepItems?: boolean) => {
+      await update((previousSections, _, sectionLookup) => {
         if (!previousSections) return [];
 
-        if (sectionIndex < 0 || sectionIndex > previousSections.length - 1) {
-          throw new Error('Section index out of bounds');
+        const sectionData = sectionLookup.get(sectionId);
+
+        if (!sectionData) {
+          throw new Error('No section with ID ' + sectionId);
         }
 
         const newSections = [...previousSections];
 
-        if (sectionIndex === 0) {
+        if (
+          sectionData.sectionIndex === 0 &&
+          (sectionData.section.items.length > 0 ||
+            previousSections.length === 1)
+        ) {
           // Default section needs to always exist, but name can be hidden.
           newSections[0].name = undefined;
           return newSections;
         }
 
-        if (keepItems) {
-          const items = newSections[sectionIndex].items;
-          newSections[sectionIndex - 1].items.push(...items);
+        if (
+          keepItems &&
+          sectionData.sectionIndex > 0 &&
+          sectionData.section.items.length > 0
+        ) {
+          const items = newSections[sectionData.sectionIndex].items;
+          newSections[sectionData.sectionIndex - 1].items.push(...items);
         }
 
-        newSections.splice(sectionIndex, 1);
+        newSections.splice(sectionData.sectionIndex, 1);
 
         return newSections;
       });
@@ -447,14 +542,6 @@ export const useTodo = (initialName?: string) => {
 
     await core.clearHistory(name);
   }, [name]);
-
-  const getItem = useCallback(
-    (itemIndex: number, sectionIndex = 0) => {
-      if (!todoSections) return null;
-      return todoSections[sectionIndex]?.items[itemIndex];
-    },
-    [todoSections]
-  );
 
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -486,7 +573,6 @@ export const useTodo = (initialName?: string) => {
   return {
     name,
     sections: todoSections,
-    getItem,
     revaluate,
     commit,
     update,

@@ -1,4 +1,12 @@
+import { UUID } from 'crypto';
+
+export type Branded<T, Brand extends string> = T & { __brand: Brand };
+
+export type ItemUUID = Branded<UUID, 'todo'>;
+export type SectionUUID = Branded<UUID, 'section'>;
+
 export type TodoItem = {
+  id: ItemUUID;
   checked: boolean;
   content: string;
   description?: string;
@@ -9,6 +17,7 @@ export type TodoItem = {
 };
 
 export type TodoSection = {
+  id: SectionUUID;
   name?: string;
   items: TodoItem[];
 };

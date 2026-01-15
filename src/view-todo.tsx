@@ -14,10 +14,7 @@ import { ListActions } from './actions/ListActions';
 import { AddNewListItem } from './components/AddNewListItem';
 import { filterItems, TodoFilter } from './core/filters';
 import { ItemFilters } from './components/ItemFilters';
-
-const getItemKey = (itemIndex: number, sectionIndex: number) => {
-  return `${itemIndex}-${sectionIndex}`;
-};
+import { ItemUUID, SectionUUID, TodoItem, TodoSection } from './core/types';
 
 const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   const {
@@ -26,7 +23,6 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     canRedo,
 
     revaluate,
-    getItem,
     toggleItem,
     updateItem,
     removeItem,
@@ -49,19 +45,12 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
   const [filter, setFilter] = useState<TodoFilter>('all');
 
-  const onUpdate = (itemIndex: number, sectionIndex = 0) => {
-    const item = getItem(itemIndex, sectionIndex);
-
-    if (!item) {
-      showToast(Toast.Style.Failure, 'Item not found');
-      return;
-    }
-
+  const onUpdate = (item: TodoItem) => {
     push(
       <EditTodoView
         initialTodoItem={item}
-        onSubmit={(item) => {
-          updateItem(item, itemIndex, sectionIndex);
+        onSubmit={(updatedItem) => {
+          updateItem(updatedItem, item.id);
           pop();
         }}
       />
@@ -69,21 +58,21 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   };
 
   const onAdd = async (
-    itemIndex: number,
-    sectionIndex: number,
-    after: boolean
+    at:
+      | { itemId: ItemUUID; mode: 'before' | 'after' }
+      | { sectionId: SectionUUID }
   ) => {
-    const item = await createItem();
+    const item = createItem();
 
     push(
       <EditTodoView
         initialTodoItem={item}
         onSubmit={(item) => {
-          addItem(item, itemIndex, sectionIndex, after);
+          addItem(item, at);
 
-          if (after) {
-            setFocusedItem((itemIndex + 1).toString());
-          }
+          setTimeout(() => {
+            setFocusedItem(item.id);
+          }, 50);
 
           pop();
         }}
@@ -91,51 +80,37 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     );
   };
 
-  const onMove = async (
-    itemIndex: number,
-    sectionIndex: number,
-    direction: 'up' | 'down'
-  ) => {
-    const newIndices = await moveItem(itemIndex, sectionIndex, direction);
-    if (!newIndices) {
-      showToast(Toast.Style.Failure, 'Failed to move item');
-      return;
-    }
+  const onMove = async (itemId: ItemUUID, direction: 'up' | 'down') => {
+    await moveItem(itemId, direction);
 
     // NOTE: this "fixes" is a weird race condition that prevents update order issues...
+    // NOTE: does this work at all anymore?
     setTimeout(() => {
       // NOTE: I think I need to set a better key for the todos
-      setFocusedItem(getItemKey(newIndices.itemIndex, newIndices.sectionIndex));
+      setFocusedItem(itemId);
     }, 10);
   };
 
-  const onEditSection = (sectionIndex: number) => {
-    if (!sections || sectionIndex < 0 || sectionIndex >= sections.length)
-      return;
-
+  const onEditSection = (section: TodoSection) => {
     push(
       <EditSectionView
-        initialSection={sections[sectionIndex]}
-        onSubmit={(section) => {
-          updateSection(section, sectionIndex);
+        initialSection={section}
+        onSubmit={(updatedSection) => {
+          updateSection(updatedSection, { sectionId: section.id });
           pop();
         }}
       />
     );
   };
 
-  const onAddSection = async (sectionIndex: number, itemIndex: number) => {
-    if (!sections || sectionIndex < 0 || sectionIndex >= sections.length) {
-      return;
-    }
-
-    const section = await createSection({ name: 'New Section' });
+  const onAddSection = async (itemId: ItemUUID) => {
+    const section = createSection({ name: 'New Section' });
 
     push(
       <EditSectionView
         initialSection={section}
         onSubmit={async (section) => {
-          await addSection(section, sectionIndex, itemIndex);
+          await addSection(section, itemId);
           pop();
         }}
       />
@@ -163,17 +138,15 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   };
 
   const getListActions = useCallback(
-    (itemIndex: number, sectionIndex: number, sectionName?: string) => (
+    (item: TodoItem | null, section: TodoSection) => (
       <ListActions
         showDetail={showDetail}
         actionHandlers={{
-          onAdd: () => onAdd(itemIndex, sectionIndex, false),
-          onAddSection: () => onAddSection(sectionIndex, itemIndex),
-          onEditSection: () => onEditSection(sectionIndex),
-          removeSection:
-            sectionIndex > 0 || sectionName
-              ? (keepItems: boolean) => removeSection(sectionIndex, keepItems)
-              : undefined,
+          onAdd: item ? (mode) => onAdd({ itemId: item.id, mode }) : undefined,
+          onAddSection: item ? () => onAddSection(item.id) : undefined, // NOTE: section can now not be added from empty sections
+          onEditSection: () => onEditSection(section),
+          removeSection: (keepItems: boolean) =>
+            removeSection(section.id, keepItems), // TODO: does this allow deleting the last section?
           undo: canUndo ? onUndo : undefined,
           redo: canRedo ? onRedo : undefined,
           revaluate,
@@ -209,14 +182,14 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     >
       {sections?.map((section, sectionIndex) => (
         <List.Section
-          key={sectionIndex}
+          key={section.id}
           title={section.name}
           subtitle={section.name ? section.items.length.toString() : undefined}
         >
-          {filterItems(section.items, filter).map((item, itemIndex) => (
+          {filterItems(section.items, filter).map((item) => (
             <TodoListItem
-              id={getItemKey(itemIndex, sectionIndex)}
-              key={getItemKey(itemIndex, sectionIndex)}
+              id={item.id}
+              key={item.id}
               item={item}
               parentSection={section}
               actionHandlers={{
@@ -224,31 +197,25 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                 onMove:
                   // NOTE: Only allow reordering when not filtering
                   filter === 'all'
-                    ? (direction) => onMove(itemIndex, sectionIndex, direction)
+                    ? (direction) => onMove(item.id, direction)
                     : undefined,
-                onUpdate: () => onUpdate(itemIndex, sectionIndex),
-                removeItem: () => removeItem(itemIndex, sectionIndex),
-                toggleItem: () => toggleItem(itemIndex, sectionIndex),
+                onUpdate: () => onUpdate(item),
+                removeItem: () => removeItem(item.id),
+                toggleItem: () => toggleItem(item.id),
               }}
-              additionalActions={getListActions(
-                itemIndex,
-                sectionIndex,
-                section.name
-              )}
+              additionalActions={getListActions(item, section)}
             />
           ))}
           {(sectionIndex === sections.length - 1 || !section.items.length) && (
             <AddNewListItem
-              sectionIndex={sectionIndex}
+              sectionId={section.id}
               actionHandlers={{
-                onAdd: (sectionIndex) =>
-                  onAdd(
-                    section?.items?.length ? section.items.length - 1 : 0,
-                    sectionIndex,
-                    true
-                  ),
+                onAdd: () =>
+                  onAdd({
+                    sectionId: section.id,
+                  }),
               }}
-              additionalActions={getListActions(0, sectionIndex, section.name)}
+              additionalActions={getListActions(null, section)}
             />
           )}
         </List.Section>
