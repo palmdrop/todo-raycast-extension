@@ -1,7 +1,7 @@
 import * as data from './data';
 import * as markdown from './markdown';
 import * as history from './history';
-import { TodoList, TodoSection } from './types';
+import { ItemUUID, TodoList, TodoSection } from './types';
 
 export const getTodoList = async (
   name: string,
@@ -22,7 +22,8 @@ export const getTodoList = async (
 let writeLock: number | null = null;
 export const updateTodoItems = async (
   name: string,
-  sections: TodoSection[]
+  sections: TodoSection[],
+  focusedItem: ItemUUID | null
 ) => {
   const now = Date.now();
   writeLock = now;
@@ -34,6 +35,12 @@ export const updateTodoItems = async (
   // NOTE: can be made sync by caching the filePath and convert read/write to sync
   // NOTE: Other option: always cache data, commit to file at next startup
 
+  const focusedIndex = focusedItem
+    ? sections
+        .flatMap((section) => section.items)
+        .findIndex((item) => item.id === focusedItem)
+    : null;
+
   const currentContent = await data.readTodoList(name);
 
   const newContent = markdown.convertTodoListToMarkdown(currentContent, {
@@ -43,7 +50,7 @@ export const updateTodoItems = async (
 
   // Prevents concurrent writes... kind of
   if (writeLock === now) {
-    await data.updateTodoList(name, newContent);
+    await data.updateTodoList(name, newContent, focusedIndex);
   }
 
   writeLock = null;
@@ -55,16 +62,35 @@ export const getLatestTodoName = async () => {
 
 export const initHistory = data.initHistory;
 
+export const getHistory = history.get;
+
+const findItemUUID = (sections: TodoSection[], index: number | null) => {
+  if (index === null) return null;
+
+  return (
+    sections.flatMap((section) => section.items).find((_, i) => i === index)
+      ?.id ?? null
+  );
+};
+
 export const undoTodoListChange = async (name: string) => {
   const todoListData = await data.undoTodoListChange(name);
-  const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
-  return { name, sections };
+  const { sections } = markdown.parseTodoItemsFromMarkdown(
+    todoListData.content
+  );
+  const focusedItem = findItemUUID(sections, todoListData.focusedItem);
+
+  return { name, sections, focusedItem };
 };
 
 export const redoTodoListChange = async (name: string) => {
   const todoListData = await data.redoTodoListChange(name);
-  const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
-  return { name, sections };
+  const { sections } = markdown.parseTodoItemsFromMarkdown(
+    todoListData.content
+  );
+  const focusedItem = findItemUUID(sections, todoListData.focusedItem);
+
+  return { name, sections, focusedItem };
 };
 
 export const clearHistory = async (name: string) => {

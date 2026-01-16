@@ -19,9 +19,9 @@ type SectionLookupMap = Map<
   { section: TodoSection; sectionIndex: number }
 >;
 
-// TODO: Cache data either here or in core/data.ts to ensure hook can be used in multiple components without re-parsing
 export const useTodo = (initialName?: string) => {
   const [name, setName] = useState(initialName);
+  const [focusedItem, setFocusedItem] = useState<ItemUUID | null>(null);
   const [todoSections, setTodoSections] = useState<TodoSection[] | null>(null);
 
   useEffect(() => {
@@ -90,9 +90,9 @@ export const useTodo = (initialName?: string) => {
   const commit = useCallback(
     async (todoSections: TodoSection[]) => {
       if (!name) return;
-      return await core.updateTodoItems(name, todoSections);
+      return await core.updateTodoItems(name, todoSections, focusedItem);
     },
-    [name]
+    [name, focusedItem]
   );
 
   const update = useMemo(() => {
@@ -138,7 +138,7 @@ export const useTodo = (initialName?: string) => {
   }, [commit, revaluate, todoSections]);
 
   const updateSection = useCallback(
-    async (
+    (
       section:
         | TodoSection
         | ((
@@ -148,7 +148,7 @@ export const useTodo = (initialName?: string) => {
           ) => TodoSection | null),
       id: { sectionId: SectionUUID } | { itemId: ItemUUID }
     ) => {
-      return await update((previousSections, itemLookup, sectionLookup) => {
+      return update((previousSections, itemLookup, sectionLookup) => {
         if (!previousSections) return [];
 
         let sectionId: SectionUUID | undefined = (
@@ -190,7 +190,7 @@ export const useTodo = (initialName?: string) => {
   );
 
   const updateItem = useCallback(
-    async (
+    (
       item: Partial<TodoItem> | ((item: TodoItem) => Partial<TodoItem>),
       id: ItemUUID
     ) => {
@@ -226,8 +226,8 @@ export const useTodo = (initialName?: string) => {
   );
 
   const toggleItem = useCallback(
-    async (id: ItemUUID) => {
-      updateItem(
+    (id: ItemUUID) => {
+      return updateItem(
         (item) => ({
           ...item,
           checked: !item.checked,
@@ -239,9 +239,9 @@ export const useTodo = (initialName?: string) => {
   );
 
   const removeItem = useCallback(
-    async (id: ItemUUID) => {
+    (id: ItemUUID) => {
       // NOTE: does nothing if item does not exist
-      updateSection(
+      return updateSection(
         (previousSection, _, sectionIndex) => {
           const newItems = previousSection.items.filter(
             (item) => item.id !== id
@@ -268,20 +268,21 @@ export const useTodo = (initialName?: string) => {
   );
 
   const addItem = useCallback(
-    async (
+    (
       item: TodoItem,
       at:
         | { itemId: ItemUUID; mode?: 'before' | 'after' }
         | { sectionId: SectionUUID; mode?: 'first' | 'last' }
     ) => {
-      updateSection((previousSection, itemLookup) => {
+      return updateSection((previousSection, itemLookup) => {
         if ('sectionId' in at) {
+          const mode = at.mode || 'last';
           return {
             ...previousSection,
             items: [
-              ...(at.mode === 'last' ? [] : previousSection.items),
+              ...(mode === 'first' ? [] : previousSection.items),
               item,
-              ...(at.mode === 'first' ? [] : previousSection.items),
+              ...(mode === 'last' ? [] : previousSection.items),
             ],
           };
         }
@@ -346,8 +347,8 @@ export const useTodo = (initialName?: string) => {
   );
 
   const swapItems = useCallback(
-    async (itemId1: ItemUUID, itemId2: ItemUUID) => {
-      update((previousSections, itemLookup) => {
+    (itemId1: ItemUUID, itemId2: ItemUUID) => {
+      return update((previousSections, itemLookup) => {
         if (!previousSections) return [];
         return swap(itemId1, itemId2, previousSections, itemLookup);
       });
@@ -356,8 +357,8 @@ export const useTodo = (initialName?: string) => {
   );
 
   const moveItem = useCallback(
-    async (itemId: ItemUUID, direction: 'up' | 'down') => {
-      update((previousSections, itemLookup, sectionLookup) => {
+    (itemId: ItemUUID, direction: 'up' | 'down') => {
+      return update((previousSections, itemLookup, sectionLookup) => {
         if (!previousSections) return [];
 
         const itemData = itemLookup.get(itemId);
@@ -376,8 +377,7 @@ export const useTodo = (initialName?: string) => {
         if (
           (direction === 'up' && itemData.itemIndex > 0) ||
           (direction === 'down' &&
-            itemData.itemIndex < sectionData.section.items.length - 1) ||
-          previousSections.length === 0
+            itemData.itemIndex < sectionData.section.items.length - 1)
         ) {
           const targetItemIndex = wrap(
             itemData.itemIndex + (direction === 'up' ? -1 : 1),
@@ -394,7 +394,7 @@ export const useTodo = (initialName?: string) => {
           );
         }
 
-        // Move to a different section
+        // Move to a (potentially) different section
         const targetSectionIndex = wrap(
           direction === 'up'
             ? sectionData.sectionIndex - 1
@@ -403,17 +403,14 @@ export const useTodo = (initialName?: string) => {
           previousSections.length
         );
 
-        console.log(targetSectionIndex);
+        sectionData.section.items.splice(itemData.itemIndex, 1);
 
         const targetSection = previousSections[targetSectionIndex];
-
         if (direction === 'up') {
           targetSection.items.push(itemData.item);
         } else {
           targetSection.items.unshift(itemData.item);
         }
-
-        sectionData.section.items.splice(itemData.itemIndex, 1);
 
         return previousSections
           .map((section, index) => {
@@ -425,6 +422,7 @@ export const useTodo = (initialName?: string) => {
               // Delete empty, unnamed first section (but only if there are other sections)
               if (
                 sectionData.sectionIndex === 0 &&
+                section.items.length === 0 &&
                 !section.name &&
                 previousSections.length > 1
               ) {
@@ -484,8 +482,8 @@ export const useTodo = (initialName?: string) => {
   );
 
   const removeSection = useCallback(
-    async (sectionId: SectionUUID, keepItems?: boolean) => {
-      await update((previousSections, _, sectionLookup) => {
+    (sectionId: SectionUUID, keepItems?: boolean) => {
+      return update((previousSections, _, sectionLookup) => {
         if (!previousSections) return [];
 
         const sectionData = sectionLookup.get(sectionId);
@@ -528,6 +526,8 @@ export const useTodo = (initialName?: string) => {
 
     const restoredTodo = await core.undoTodoListChange(name);
     setTodoSections(restoredTodo.sections);
+
+    return restoredTodo;
   }, [name, setTodoSections]);
 
   const redo = useCallback(async () => {
@@ -535,6 +535,8 @@ export const useTodo = (initialName?: string) => {
 
     const restoredTodo = await core.redoTodoListChange(name);
     setTodoSections(restoredTodo.sections);
+
+    return restoredTodo;
   }, [name, setTodoSections]);
 
   const clearHistory = useCallback(async () => {
@@ -592,5 +594,6 @@ export const useTodo = (initialName?: string) => {
     clearHistory,
     canUndo,
     canRedo,
+    setFocusedItem,
   };
 };

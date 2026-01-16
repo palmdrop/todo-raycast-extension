@@ -1,10 +1,11 @@
 import { LocalStorage } from '@raycast/api';
 
-const HISTORY_KEY_PREFIX = 'TODO_HISTORY';
+const HISTORY_KEY_PREFIX = 'HISTORY_';
 
 // TODO: figure out if this needs optimizing. Store content and list of history entries separately?
 type HistoryEntry = {
   dateTime: string;
+  focusedItem: number | null;
   content: string;
 };
 
@@ -95,6 +96,7 @@ export const init = async (name: string, currentContent: string) => {
 
   await push(name, {
     dateTime: new Date().toISOString(),
+    focusedItem: null,
     content: currentContent,
   });
 };

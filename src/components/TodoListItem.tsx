@@ -25,7 +25,6 @@ export const TodoListItem = ({
       id={id}
       icon={item.checked ? CHECKED_ICON : UNCHECKED_ICON}
       title={item.content}
-      // TODO: read section using hook? will this recompute? check?
       detail={<TodoDetail item={item} parentSection={parentSection} />}
       actions={
         <ActionPanel>

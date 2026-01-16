@@ -6,6 +6,7 @@ import {
   openExtensionPreferences,
   useNavigation,
   LaunchType,
+  launchCommand,
 } from '@raycast/api';
 import { listTodoLists, removeTodoList } from './core/data';
 import { useCachedPromise } from '@raycast/utils';
@@ -29,7 +30,7 @@ export default function Command() {
       {todos?.data?.map((todo) => (
         <List.Item
           key={todo.name}
-          title={todo.name ?? 'what'}
+          title={todo.name}
           subtitle={todo.filePath}
           icon={Icon.Ticket}
           actions={
@@ -50,6 +51,15 @@ export default function Command() {
                 onAction={async () => {
                   await removeTodoList(todo.name);
                   todos.revalidate();
+                }}
+              />
+              <Action
+                title="Register New Todo List"
+                onAction={() => {
+                  launchCommand({
+                    name: 'add-todo',
+                    type: LaunchType.UserInitiated,
+                  });
                 }}
               />
             </ActionPanel>

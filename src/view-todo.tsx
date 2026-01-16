@@ -15,12 +15,17 @@ import { AddNewListItem } from './components/AddNewListItem';
 import { filterItems, TodoFilter } from './core/filters';
 import { ItemFilters } from './components/ItemFilters';
 import { ItemUUID, SectionUUID, TodoItem, TodoSection } from './core/types';
+import { TodoListHistoryView } from './components/TodoListHistoryView';
 
 const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
+  const [showDetail, setShowDetail] = useState(true); // TODO: remember state using cache
+  const [hardFocusedItem, setHardFocusedItem] = useState<string | null>(null);
+
   const {
     sections,
     canUndo,
     canRedo,
+    name,
 
     revaluate,
     toggleItem,
@@ -36,12 +41,10 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     undo,
     redo,
     clearHistory,
+    setFocusedItem,
   } = useTodo(props.arguments.name);
 
   const { push, pop } = useNavigation();
-
-  const [showDetail, setShowDetail] = useState(true); // TODO: remember state using cache
-  const [focusedItem, setFocusedItem] = useState<string | undefined>(undefined);
 
   const [filter, setFilter] = useState<TodoFilter>('all');
 
@@ -49,11 +52,12 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     push(
       <EditTodoView
         initialTodoItem={item}
-        onSubmit={(updatedItem) => {
-          updateItem(updatedItem, item.id);
+        onSubmit={async (updatedItem) => {
+          await updateItem(updatedItem, item.id);
           pop();
         }}
-      />
+      />,
+      () => setHardFocusedItem(item.id)
     );
   };
 
@@ -67,28 +71,22 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     push(
       <EditTodoView
         initialTodoItem={item}
-        onSubmit={(item) => {
-          addItem(item, at);
-
-          setTimeout(() => {
-            setFocusedItem(item.id);
-          }, 50);
+        onSubmit={async (item) => {
+          await addItem(item, at);
 
           pop();
         }}
-      />
+      />,
+      () => {
+        setTimeout(() => setHardFocusedItem(item.id), 100);
+      }
     );
   };
 
   const onMove = async (itemId: ItemUUID, direction: 'up' | 'down') => {
     await moveItem(itemId, direction);
 
-    // NOTE: this "fixes" is a weird race condition that prevents update order issues...
-    // NOTE: does this work at all anymore?
-    setTimeout(() => {
-      // NOTE: I think I need to set a better key for the todos
-      setFocusedItem(itemId);
-    }, 10);
+    setHardFocusedItem(itemId);
   };
 
   const onEditSection = (section: TodoSection) => {
@@ -119,7 +117,13 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
   const onUndo = async () => {
     try {
-      await undo();
+      const result = await undo();
+
+      if (result?.focusedItem) {
+        setTimeout(() => {
+          setHardFocusedItem(result.focusedItem);
+        }, 100);
+      }
     } catch (error) {
       console.error(error);
       // NOTE: no distinction between error and no history
@@ -129,12 +133,23 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
   const onRedo = async () => {
     try {
-      await redo();
+      const result = await redo();
+
+      if (result?.focusedItem) {
+        setTimeout(() => {
+          setHardFocusedItem(result.focusedItem);
+        }, 100);
+      }
     } catch (error) {
       console.error(error);
       // NOTE: no distinction between error and no history
       showToast(Toast.Style.Failure, 'Nothing to redo');
     }
+  };
+
+  const viewHistory = () => {
+    if (!name) return;
+    push(<TodoListHistoryView name={name} />);
   };
 
   const getListActions = useCallback(
@@ -151,6 +166,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           redo: canRedo ? onRedo : undefined,
           revaluate,
           clearHistory,
+          viewHistory,
           setShowDetail,
         }}
       />
@@ -174,11 +190,12 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   return (
     <List
       isShowingDetail={showDetail}
-      selectedItemId={focusedItem}
+      selectedItemId={hardFocusedItem ?? undefined}
       filtering={{ keepSectionOrder: true }}
       searchBarAccessory={
         <ItemFilters defaultFilter={filter} filterChanged={setFilter} />
       }
+      onSelectionChange={(id) => setFocusedItem(id as ItemUUID)}
     >
       {sections?.map((section, sectionIndex) => (
         <List.Section

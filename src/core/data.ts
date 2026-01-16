@@ -44,13 +44,14 @@ const unregister = async (name: string) => {
 };
 
 const list = async () => {
+  // TODO: store all todo keys in separate list, make it possible to ONLY read todo lists here
   const items = await LocalStorage.allItems();
 
-  const todoItems = Object.entries(items)
+  const todos = Object.entries(items)
     .filter(([key]) => key.startsWith(TODO_KEY_PREFIX))
     .map(([, value]) => JSON.parse(value) as TodoListData);
 
-  return todoItems;
+  return todos;
 };
 
 // TODO: cache this since it is also read when undoing/redoing
@@ -63,7 +64,12 @@ const read = async (name: string) => {
   return await fs.readFile(todo.filePath, 'utf-8');
 };
 
-const write = async (name: string, content: string, pushToHistory = true) => {
+const write = async (
+  name: string,
+  content: string,
+  focusedItem: number | null,
+  pushToHistory = true
+) => {
   const todo = await get(name);
   if (!todo) {
     throw new Error(`Todo list with name "${name}" does not exist`);
@@ -74,6 +80,7 @@ const write = async (name: string, content: string, pushToHistory = true) => {
   if (pushToHistory) {
     await history.push(name, {
       dateTime: new Date().toISOString(),
+      focusedItem,
       content,
     });
   }
@@ -84,9 +91,9 @@ const restore = async (name: string, index = 0) => {
 
   if (!previous) throw new Error('No history to restore');
 
-  await write(name, previous.content, false);
+  await write(name, previous.content, previous.focusedItem, false);
 
-  return previous.content;
+  return previous;
 };
 
 const redo = async (name: string, index = 0) => {
@@ -94,9 +101,9 @@ const redo = async (name: string, index = 0) => {
 
   if (!next) throw new Error('No history to redo');
 
-  await write(name, next.content, false);
+  await write(name, next.content, next.focusedItem, false);
 
-  return next.content;
+  return next;
 };
 
 const setLatest = async (name: string) => {
@@ -200,9 +207,13 @@ export const readTodoList = async (name: string) => {
   return todo;
 };
 
-export const updateTodoList = async (name: string, content: string) => {
+export const updateTodoList = async (
+  name: string,
+  content: string,
+  focusedItem: number | null
+) => {
   await setLatest(name);
-  return await write(name, content);
+  return await write(name, content, focusedItem);
 };
 
 export const getLatestTodoName = async () => {

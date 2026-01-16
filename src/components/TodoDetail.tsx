@@ -6,6 +6,7 @@ import {
   UNCHECKED_LABEL,
   UNCHECKED_ICON,
 } from '../constants';
+import { useMemo } from 'react';
 
 type Props = {
   item: TodoItem;
@@ -13,19 +14,24 @@ type Props = {
 };
 
 export const TodoDetail = ({ item, parentSection }: Props) => {
+  const markdown = useMemo(
+    () => `
+**${item.checked ? '✅' : '❌'} ${item.content}**
+
+${item.description || '[no description]'}
+`,
+    [item]
+  );
+
   return (
     <List.Item.Detail
+      markdown={markdown}
       metadata={
         <List.Item.Detail.Metadata>
-          <List.Item.Detail.Metadata.Label title="Todo" text={item.content} />
           <List.Item.Detail.Metadata.Label
             title="Status"
             text={item.checked ? CHECKED_LABEL : UNCHECKED_LABEL}
             icon={item.checked ? CHECKED_ICON : UNCHECKED_ICON}
-          />
-          <List.Item.Detail.Metadata.Label
-            title="Description"
-            text={item.description}
           />
           {parentSection && (
             <List.Item.Detail.Metadata.Label
