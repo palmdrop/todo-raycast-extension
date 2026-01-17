@@ -93,6 +93,15 @@ export const redoTodoListChange = async (name: string) => {
   return { name, sections, focusedItem };
 };
 
+export const restoreTo = async (name: string, entry: history.HistoryEntry) => {
+  const history = await getHistory(name);
+  const index = history.undoStack.findIndex(
+    (undoEntry) => undoEntry.dateTime === entry.dateTime
+  );
+
+  return await data.undoTodoListChange(name, index);
+};
+
 export const clearHistory = async (name: string) => {
   return await data.clearHistory(name);
 };

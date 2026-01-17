@@ -149,7 +149,15 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
   const viewHistory = () => {
     if (!name) return;
-    push(<TodoListHistoryView name={name} />);
+    push(
+      <TodoListHistoryView
+        name={name}
+        onRestore={() => {
+          pop();
+          revaluate();
+        }}
+      />
+    );
   };
 
   const getListActions = useCallback(
