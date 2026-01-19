@@ -11,9 +11,11 @@
   use git diff somehow?
   https://github.com/kpdecker/jsdiff
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: history
 
 - [ ] Add due date notifications
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: background
 
 - [X] Add filters
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
@@ -41,14 +43,17 @@
 - [X] Parse headlines as sections
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [ ] Preserve additional metadata, tags, description, priority, etc
+- [ ] Add priority?
+  or not?
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: properties
 
 - [X] Do not add frontmatter if not already present? (check for undefined)
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
 - [ ] Allow crossing out todos, i.e marking them as invalid
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: items
 
 - [X] Listen to file changes, update raycast live if file changes from other source.
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
@@ -56,19 +61,22 @@
 - [ ] Show toolbar notification or sticky/popups for urgent todos
   - use background process
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: background
 
 - [ ] Fix undo redo focused item
   It seems to focus the item BEFORE the last change?
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: history
 
 - [ ] Track change actions and store in history
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: history
 
 - [X] Display additional history data in detail
   Such as date, etc
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [ ] Implement tagging system
+- [X] Implement tagging system
   fix edit view
   at the moment, tags cannot be added
   need an input field for adding and deleting tags
@@ -77,15 +85,17 @@
 - [ ] Make it possible to ONLY keep a todo in local storage
   No need for actual file. Could be good if I want to publish the extension
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: backend
 
-- [ ] Filter/group by tags
+- [X] Filter/group by tags
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
 - [ ] Implement todo dependencies
   Similar to subtasks, but potentially more complex.
   Create a graph view that shows which todos needs to be completed first, which entries that unlocks which, etc
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+  * tags: dependencies
 
-- [ ] Show toast when completing an item
+- [X] Show toast when completing an item
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 

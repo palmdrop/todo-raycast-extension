@@ -16,63 +16,78 @@ export type Filter = {
     }
 );
 
-export const FILTERS = {
-  all: {
-    label: 'All',
-    group: null,
-    filter: () => true,
-  },
-  complete: {
-    label: 'Complete',
-    group: 'Status',
-    filter: (item: TodoItem) => item.checked,
-  },
-  incomplete: {
-    label: 'Incomplete',
-    group: 'Status',
-    filter: (item: TodoItem) => !item.checked,
-  },
-  'date-descending': {
-    label: 'Due (descending)',
-    group: 'Date',
-    order: (a, b) => {
-      if (a.due === null) return 1;
-      if (b.due === null) return -1;
+export type Filters = { [key: string]: Filter };
 
-      return a.due!.getTime() - b.due!.getTime();
+export const getFilters = (tags?: string[]): Filters =>
+  ({
+    all: {
+      label: 'All',
+      group: null,
+      filter: () => true,
     },
-  },
-  'date-ascending': {
-    label: 'Due (ascending)',
-    group: 'Date',
-    order: (a, b) => {
-      if (a.due === null) return -1;
-      if (b.due === null) return 1;
-
-      return b.due!.getTime() - a.due!.getTime();
+    complete: {
+      label: 'Complete',
+      group: 'Status',
+      filter: (item: TodoItem) => item.checked,
     },
-  },
-} as const satisfies { [key: string]: Filter };
+    incomplete: {
+      label: 'Incomplete',
+      group: 'Status',
+      filter: (item: TodoItem) => !item.checked,
+    },
+    'date-descending': {
+      label: 'Due (descending)',
+      group: 'Date',
+      order: (a, b) => {
+        if (a.due === null) return 1;
+        if (b.due === null) return -1;
 
-export type TodoFilter = keyof typeof FILTERS;
+        return a.due!.getTime() - b.due!.getTime();
+      },
+    },
+    'date-ascending': {
+      label: 'Due (ascending)',
+      group: 'Date',
+      order: (a, b) => {
+        if (a.due === null) return -1;
+        if (b.due === null) return 1;
+
+        return b.due!.getTime() - a.due!.getTime();
+      },
+    },
+    ...(tags ?? []).reduce(
+      (acc, tag) => {
+        const filterKey = `tag-${tag}`;
+        acc[filterKey] = {
+          label: tag,
+          group: 'Tags',
+          filter: (item: TodoItem) => item.tags.includes(tag),
+        };
+
+        return acc;
+      },
+      {} as { [key: string]: Filter }
+    ),
+  }) as Filters;
+
+export type TodoFilter = string;
 
 export const NO_GROUP_KEY = '_';
 
-export const FILTERS_BY_GROUP = Object.entries(FILTERS).reduce(
-  (acc, [key, filter]) => {
-    const group = filter.group || NO_GROUP_KEY;
-    const entries = [...(acc[group] ?? []), { key, ...filter }];
+export const getFiltersByGroup = (filters: Filters) =>
+  Object.entries(filters).reduce(
+    (acc, [key, filter]) => {
+      const group = filter.group || NO_GROUP_KEY;
+      const entries = [...(acc[group] ?? []), { key, ...filter }];
 
-    acc[group] = entries;
+      acc[group] = entries;
 
-    return acc;
-  },
-  {} as { [key: string]: (Filter & { key: string })[] }
-);
+      return acc;
+    },
+    {} as { [key: string]: (Filter & { key: string })[] }
+  );
 
-export const filterItems = (items: TodoItem[], filterKey: TodoFilter) => {
-  const filterEntry = FILTERS[filterKey];
-
+export const filterItems = (items: TodoItem[], filterEntry: Filter) => {
   const filter =
     (filterEntry as { filter: FilterFunction }).filter ?? (() => true);
 

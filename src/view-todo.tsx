@@ -5,14 +5,14 @@ import {
   Toast,
   useNavigation,
 } from '@raycast/api';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTodo } from './hooks/useTodo';
 import { EditTodoView } from './components/EditTodoView';
 import { EditSectionView } from './components/EditSectionView';
 import { TodoListItem } from './components/TodoListItem';
 import { ListActions } from './actions/ListActions';
 import { AddNewListItem } from './components/AddNewListItem';
-import { filterItems, TodoFilter } from './core/filters';
+import { filterItems, getFilters, TodoFilter } from './core/filters';
 import { ItemFilters } from './components/ItemFilters';
 import { ItemUUID, SectionUUID, TodoItem, TodoSection } from './core/types';
 import { TodoListHistoryView } from './components/TodoListHistoryView';
@@ -44,6 +44,8 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     clearHistory,
     setFocusedItem,
   } = useTodo(props.arguments.name);
+
+  const filters = useMemo(() => getFilters(allTags), [allTags]);
 
   const { push, pop } = useNavigation();
 
@@ -223,7 +225,11 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
       selectedItemId={hardFocusedItem ?? undefined}
       filtering={{ keepSectionOrder: true }}
       searchBarAccessory={
-        <ItemFilters defaultFilter={filter} filterChanged={setFilter} />
+        <ItemFilters
+          defaultFilter={filter}
+          filters={filters}
+          filterChanged={setFilter}
+        />
       }
       onSelectionChange={(id) => setFocusedItem(id as ItemUUID)}
     >
@@ -233,7 +239,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           title={section.name}
           subtitle={section.name ? section.items.length.toString() : undefined}
         >
-          {filterItems(section.items, filter).map((item) => (
+          {filterItems(section.items, filters[filter]).map((item) => (
             <TodoListItem
               id={item.id}
               key={item.id}

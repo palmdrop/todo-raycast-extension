@@ -1,16 +1,26 @@
 import { List } from '@raycast/api';
-import { FILTERS_BY_GROUP, NO_GROUP_KEY, TodoFilter } from '../core/filters';
+import {
+  Filters,
+  getFiltersByGroup,
+  NO_GROUP_KEY,
+  TodoFilter,
+} from '../core/filters';
 import { useMemo } from 'react';
 
 type Props = {
   defaultFilter: TodoFilter;
+  filters: Filters;
   filterChanged: (filter: TodoFilter) => void;
 };
 
-export const ItemFilters = ({ defaultFilter, filterChanged }: Props) => {
+export const ItemFilters = ({
+  defaultFilter,
+  filters,
+  filterChanged,
+}: Props) => {
   const dropdownItems = useMemo(
     () =>
-      Object.entries(FILTERS_BY_GROUP)
+      Object.entries(getFiltersByGroup(filters))
         .map(([group, filters]) => {
           const items = filters.map((filter) => (
             <List.Dropdown.Item
@@ -32,7 +42,7 @@ export const ItemFilters = ({ defaultFilter, filterChanged }: Props) => {
         })
         .flat()
         .filter(Boolean),
-    []
+    [filters]
   );
 
   return (
