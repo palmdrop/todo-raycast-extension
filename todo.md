@@ -3,6 +3,11 @@
   - today, yesterday, 1 week ago, etc...
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
+- [ ] Add descriptions to sections
+  and maybe link support?
+  * created: Mon Jan 19 2026 19:25:05 GMT+0100 (Central European Standard Time)
+  * tags: sections
+
 - [X] Description indentation only works for first line
   Fix!
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)

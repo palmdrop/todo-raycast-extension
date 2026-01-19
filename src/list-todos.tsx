@@ -9,11 +9,15 @@ import {
   launchCommand,
 } from '@raycast/api';
 import { listTodoLists, removeTodoList } from './core/data';
-import { useCachedPromise } from '@raycast/utils';
+import { useCachedPromise, useFrecencySorting } from '@raycast/utils';
 import ViewTodo from './view-todo';
 
 export default function Command() {
   const todos = useCachedPromise(listTodoLists);
+  const { data: sortedTodos, visitItem } = useFrecencySorting(todos.data, {
+    key: (todo) => todo.name,
+  });
+
   const { push } = useNavigation();
 
   return (
@@ -27,7 +31,7 @@ export default function Command() {
         </ActionPanel>
       }
     >
-      {todos?.data?.map((todo) => (
+      {sortedTodos?.map((todo) => (
         <List.Item
           key={todo.name}
           title={todo.name}
@@ -37,7 +41,8 @@ export default function Command() {
             <ActionPanel>
               <Action
                 title="View Todo List"
-                onAction={() => {
+                onAction={async () => {
+                  await visitItem(todo);
                   push(
                     <ViewTodo
                       arguments={{ name: todo.name }}
