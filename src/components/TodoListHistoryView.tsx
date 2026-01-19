@@ -71,7 +71,23 @@ export const TodoListHistoryView = ({ name, onRestore }: Props) => {
         key={entry.dateTime}
         title={title}
         subtitle={subtitle}
-        detail={<List.Item.Detail markdown={entry.content} />}
+        detail={
+          <List.Item.Detail
+            markdown={entry.content}
+            metadata={
+              <List.Item.Detail.Metadata>
+                <List.Item.Detail.Metadata.Label
+                  title="Date"
+                  text={getFormattedDate(entry.dateTime)}
+                />
+                <List.Item.Detail.Metadata.Label
+                  title="Time"
+                  text={getFormattedTime(entry.dateTime)}
+                />
+              </List.Item.Detail.Metadata>
+            }
+          />
+        }
         actions={
           <ActionPanel>
             <ActionPanel.Section>

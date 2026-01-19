@@ -23,6 +23,16 @@ export const useTodo = (initialName?: string) => {
   const [name, setName] = useState(initialName);
   const [focusedItem, setFocusedItem] = useState<ItemUUID | null>(null);
   const [todoSections, setTodoSections] = useState<TodoSection[] | null>(null);
+  const allTags = useMemo(() => {
+    if (!todoSections) return [];
+    const tags = new Set<string>(
+      todoSections
+        .flatMap((section) => section.items)
+        .flatMap((item) => item.tags)
+    );
+
+    return Array.from(tags);
+  }, [todoSections]);
 
   useEffect(() => {
     let aborted = false;
@@ -575,6 +585,7 @@ export const useTodo = (initialName?: string) => {
   return {
     name,
     sections: todoSections,
+    allTags,
     revaluate,
     commit,
     update,

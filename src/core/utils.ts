@@ -8,6 +8,8 @@ export const createItem = (initialFields?: Partial<TodoItem>): TodoItem => {
     content: '',
     description: '',
     due: null,
+    created: new Date(),
+    tags: [],
     ...(initialFields ?? {}),
   };
 };

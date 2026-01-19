@@ -23,6 +23,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
   const {
     sections,
+    allTags,
     canUndo,
     canRedo,
     name,
@@ -52,12 +53,16 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     push(
       <EditTodoView
         initialTodoItem={item}
+        availableTags={allTags}
         onSubmit={async (updatedItem) => {
           await updateItem(updatedItem, item.id);
+          showToast(Toast.Style.Success, 'Item Updated');
           pop();
         }}
       />,
-      () => setHardFocusedItem(item.id)
+      () => {
+        setHardFocusedItem(item.id);
+      }
     );
   };
 
@@ -71,9 +76,10 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     push(
       <EditTodoView
         initialTodoItem={item}
+        availableTags={allTags}
         onSubmit={async (item) => {
           await addItem(item, at);
-
+          showToast(Toast.Style.Success, 'Item Added');
           pop();
         }}
       />,
@@ -95,6 +101,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
         initialSection={section}
         onSubmit={(updatedSection) => {
           updateSection(updatedSection, { sectionId: section.id });
+          showToast(Toast.Style.Success, 'Section Updated');
           pop();
         }}
       />
@@ -109,6 +116,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
         initialSection={section}
         onSubmit={async (section) => {
           await addSection(section, itemId);
+          showToast(Toast.Style.Success, 'Section Added');
           pop();
         }}
       />
@@ -118,6 +126,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   const onUndo = async () => {
     try {
       const result = await undo();
+      showToast(Toast.Style.Success, 'Action Undone');
 
       if (result?.focusedItem) {
         setTimeout(() => {
@@ -134,6 +143,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   const onRedo = async () => {
     try {
       const result = await redo();
+      showToast(Toast.Style.Success, 'Action Redone');
 
       if (result?.focusedItem) {
         setTimeout(() => {
@@ -147,13 +157,25 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     }
   };
 
+  const onToggle = async (item: TodoItem) => {
+    const checked = !item.checked;
+    await toggleItem(item.id);
+    if (checked) {
+      showToast(Toast.Style.Success, 'Item Completed');
+    }
+  };
+
   const viewHistory = () => {
     if (!name) return;
     push(
       <TodoListHistoryView
         name={name}
-        onRestore={() => {
+        onRestore={(entry) => {
           pop();
+          showToast(
+            Toast.Style.Success,
+            'Restored todo list to' + new Date(entry.dateTime).toLocaleString()
+          );
           revaluate();
         }}
       />
@@ -226,7 +248,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                     : undefined,
                 onUpdate: () => onUpdate(item),
                 removeItem: () => removeItem(item.id),
-                toggleItem: () => toggleItem(item.id),
+                toggleItem: () => onToggle(item),
               }}
               additionalActions={getListActions(item, section)}
             />

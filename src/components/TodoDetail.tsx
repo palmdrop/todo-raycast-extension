@@ -13,15 +13,19 @@ type Props = {
   parentSection?: TodoSection;
 };
 
-export const TodoDetail = ({ item, parentSection }: Props) => {
-  const markdown = useMemo(
-    () => `
+const renderDescription = (description: string) => {
+  // Renders a single line break as an actual markdown line break
+  return description.split('\n').join('\n\n');
+};
+
+const getMarkdown = (item: TodoItem) => `
 **${item.checked ? '✅' : '❌'} ${item.content}**
 
-${item.description || '[no description]'}
-`,
-    [item]
-  );
+${item.description ? renderDescription(item.description) : '[no description]'}
+`;
+
+export const TodoDetail = ({ item, parentSection }: Props) => {
+  const markdown = useMemo(() => getMarkdown(item), [item]);
 
   return (
     <List.Item.Detail
@@ -35,7 +39,7 @@ ${item.description || '[no description]'}
           />
           {parentSection && (
             <List.Item.Detail.Metadata.Label
-              title="In Section"
+              title="Section"
               text={parentSection.name}
             />
           )}
@@ -45,6 +49,19 @@ ${item.description || '[no description]'}
               title="Due Date"
               text={item.due?.toLocaleString()}
             />
+          )}
+          {item.created && (
+            <List.Item.Detail.Metadata.Label
+              title="Created"
+              text={item.created?.toLocaleString()}
+            />
+          )}
+          {!!item.tags?.length && (
+            <List.Item.Detail.Metadata.TagList title="Tags">
+              {item.tags.map((tag) => (
+                <List.Item.Detail.Metadata.TagList.Item key={tag} text={tag} />
+              ))}
+            </List.Item.Detail.Metadata.TagList>
           )}
         </List.Item.Detail.Metadata>
       }

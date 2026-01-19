@@ -28,7 +28,7 @@ const getFrontmatter = (content: string) => {
 const todoItemToMarkdown = (todoItem: TodoItem) => {
   const printProperty = (key: AdditionalProperties) => {
     const value = todoItem[key];
-    if (!value) return undefined;
+    if (!value || (Array.isArray(value) && !value.length)) return undefined;
     return `${INDENT}${PROPERTY_PREFIX}${key}: ${value.toString()}`;
   };
 
@@ -43,7 +43,12 @@ const todoItemToMarkdown = (todoItem: TodoItem) => {
 
   return (
     `- [${todoItem.checked ? 'X' : ' '}] ${todoItem.content}` +
-    (todoItem.description ? `\n${INDENT}${todoItem.description}` : '') +
+    (todoItem.description
+      ? `\n${todoItem.description
+          .split('\n')
+          .map((line) => `${INDENT}${line}`)
+          .join('\n')}`
+      : '') +
     (properties ? `\n${properties}` : '') +
     '\n'
   );
@@ -74,8 +79,13 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
 
       switch (key) {
         case 'due':
-          // TODO: show warning/error if due date cannot be parsed
           return (todoItem.due = new Date(value));
+        case 'created':
+          return (todoItem.created = new Date(value));
+        case 'tags':
+          return (todoItem.tags = value.split(',').map((tag) => tag.trim()));
+        // Handled elsewhere
+        case 'id':
         default:
           return undefined;
       }
@@ -91,8 +101,13 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
         const value = trimmed.slice(colonIndex + 1).trim();
 
         // NOTE: This looks ugly
-        if (!handleProperty(key as AdditionalProperties, value)) {
-          description.push(trimmed);
+        try {
+          if (!handleProperty(key as AdditionalProperties, value)) {
+            description.push(trimmed);
+          }
+        } catch (error: unknown) {
+          console.error(error);
+          console.warn('WARNING: could not parse property', key, value);
         }
       } else {
         description.push(trimmed);
@@ -156,8 +171,6 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
       createItem({
         checked,
         content: match[2],
-        description: '',
-        due: null,
       })
     );
   }
