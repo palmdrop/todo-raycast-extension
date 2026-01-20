@@ -30,6 +30,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
     revaluate,
     toggleItem,
+    toggleItemValid,
     updateItem,
     removeItem,
     createItem,
@@ -160,11 +161,19 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   };
 
   const onToggle = async (item: TodoItem) => {
-    const checked = !item.checked;
-    await toggleItem(item.id);
-    if (checked) {
-      showToast(Toast.Style.Success, 'Item Completed');
-    }
+    await toggleItem(item.id, (item) => {
+      if (item.status === 'checked') {
+        showToast(Toast.Style.Success, 'Item Completed');
+      }
+    });
+  };
+
+  const onToggleValid = async (item: TodoItem) => {
+    await toggleItemValid(item.id, (item) => {
+      if (item.status === 'invalid') {
+        showToast(Toast.Style.Success, 'Item Invalidated');
+      }
+    });
   };
 
   const viewHistory = () => {
@@ -255,6 +264,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
                 onUpdate: () => onUpdate(item),
                 removeItem: () => removeItem(item.id),
                 toggleItem: () => onToggle(item),
+                toggleItemValid: () => onToggleValid(item),
               }}
               additionalActions={getListActions(item, section)}
             />

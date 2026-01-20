@@ -4,7 +4,7 @@ import { ItemUUID, SectionUUID, TodoItem, TodoSection } from './types';
 export const createItem = (initialFields?: Partial<TodoItem>): TodoItem => {
   return {
     id: randomUUID() as ItemUUID,
-    checked: false,
+    status: 'unchecked',
     content: '',
     description: '',
     due: null,

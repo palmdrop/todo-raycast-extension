@@ -1,8 +1,8 @@
 import { ActionPanel, List } from '@raycast/api';
 import { TodoItem as TodoItemType, TodoSection } from '../core/types';
-import { CHECKED_ICON, UNCHECKED_ICON } from '../constants';
 import { TodoDetail } from './TodoDetail';
 import { ItemActionHandlers, ItemActions } from '../actions/ItemActions';
+import { getCurrentStatusIcon } from '../utils/indicators';
 
 type Props = {
   item: TodoItemType;
@@ -23,7 +23,7 @@ export const TodoListItem = ({
     <List.Item
       key={id}
       id={id}
-      icon={item.checked ? CHECKED_ICON : UNCHECKED_ICON}
+      icon={getCurrentStatusIcon(item.status)}
       title={item.content}
       detail={<TodoDetail item={item} parentSection={parentSection} />}
       actions={

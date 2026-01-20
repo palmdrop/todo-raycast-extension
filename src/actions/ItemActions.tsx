@@ -1,9 +1,15 @@
 import { Action, ActionPanel, Icon, Keyboard } from '@raycast/api';
 import { TodoItem } from '../core/types';
-import { CHECK_ACTION_LABEL, UNCHECK_ACTION_LABEL } from '../constants';
+import {
+  getInvalidateActionIcon,
+  getInvalidateActionLabel,
+  getStatusActionIcon,
+  getStatusActionLabel,
+} from '../utils/indicators';
 
 export type ItemActionHandlers = {
   toggleItem: () => void;
+  toggleItemValid: () => void;
   onUpdate: () => void;
   removeItem: () => void;
   onMove?: (direction: 'up' | 'down') => void;
@@ -18,9 +24,9 @@ export const ItemActions = ({ item, actionHandlers }: Props) => {
   return (
     <ActionPanel.Section title="Item">
       <Action
-        title={item.checked ? CHECK_ACTION_LABEL : UNCHECK_ACTION_LABEL}
+        title={getStatusActionLabel(item.status)}
         onAction={() => actionHandlers.toggleItem()}
-        icon={!item.checked ? Icon.Check : Icon.Xmark}
+        icon={getStatusActionIcon(item.status)}
       />
       <Action
         title="Edit Item"
@@ -44,6 +50,11 @@ export const ItemActions = ({ item, actionHandlers }: Props) => {
           />
         </>
       )}
+      <Action
+        title={getInvalidateActionLabel(item.status)}
+        onAction={() => actionHandlers.toggleItemValid()}
+        icon={getInvalidateActionIcon(item.status)}
+      />
       <Action
         title="Delete Item"
         onAction={() => actionHandlers.removeItem()}

@@ -1,12 +1,11 @@
 import { List } from '@raycast/api';
 import { TodoItem, TodoSection } from '../core/types';
-import {
-  CHECKED_LABEL,
-  CHECKED_ICON,
-  UNCHECKED_LABEL,
-  UNCHECKED_ICON,
-} from '../constants';
 import { useMemo } from 'react';
+import {
+  getCurrentStatusIcon,
+  getStatusLabel,
+  getStatusMarkdownSymbol,
+} from '../utils/indicators';
 
 type Props = {
   item: TodoItem;
@@ -19,7 +18,7 @@ const renderDescription = (description: string) => {
 };
 
 const getMarkdown = (item: TodoItem) => `
-**${item.checked ? '✅' : '❌'} ${item.content}**
+**${getStatusMarkdownSymbol(item.status)} ${item.content}**
 
 ${item.description ? renderDescription(item.description) : '[no description]'}
 `;
@@ -34,8 +33,8 @@ export const TodoDetail = ({ item, parentSection }: Props) => {
         <List.Item.Detail.Metadata>
           <List.Item.Detail.Metadata.Label
             title="Status"
-            text={item.checked ? CHECKED_LABEL : UNCHECKED_LABEL}
-            icon={item.checked ? CHECKED_ICON : UNCHECKED_ICON}
+            text={getStatusLabel(item.status)}
+            icon={getCurrentStatusIcon(item.status)}
           />
           {parentSection && (
             <List.Item.Detail.Metadata.Label

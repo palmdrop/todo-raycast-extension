@@ -1,15 +1,31 @@
-import { TodoItem, TodoList, TodoSection } from './types';
+import { ItemStatus, TodoItem, TodoList, TodoSection } from './types';
 import { createItem, createSection } from './utils';
 
-const TODO_REGEX = /^- \[(x|X| )?\] (.*)/;
+const TODO_REGEX = /^- \[(x|X|-| )?\] (.*)/;
 const SECTION_REGEX = /^# (.*)/;
 
 const INDENT = '  ';
 const PROPERTY_PREFIX = '* ';
 
+const STATUS_TO_SYMBOL: { [key in ItemStatus]: string[] } = {
+  unchecked: [' ', ''],
+  checked: ['x', 'X'],
+  invalid: ['-'],
+};
+
+const SYMBOL_TO_STATUS = (
+  Object.entries(STATUS_TO_SYMBOL) as [ItemStatus, string[]][]
+).reduce(
+  (acc, [key, value]) => {
+    value.forEach((symbol) => (acc[symbol] = key));
+    return acc;
+  },
+  {} as { [key: string]: ItemStatus }
+);
+
 type AdditionalProperties = keyof Omit<
   TodoItem,
-  'content' | 'checked' | 'description'
+  'content' | 'status' | 'description'
 >;
 
 // TODO: store list data in the frontmatter, but make sure to preserve existing fields
@@ -34,7 +50,7 @@ const todoItemToMarkdown = (todoItem: TodoItem) => {
 
   const properties = (
     Object.keys(todoItem).filter(
-      (key) => !['id', 'content', 'checked', 'description'].includes(key)
+      (key) => !['id', 'content', 'status', 'description'].includes(key)
     ) as AdditionalProperties[]
   )
     .map(printProperty)
@@ -42,7 +58,7 @@ const todoItemToMarkdown = (todoItem: TodoItem) => {
     .join('\n');
 
   return (
-    `- [${todoItem.checked ? 'X' : ' '}] ${todoItem.content}` +
+    `- [${STATUS_TO_SYMBOL[todoItem.status][0]}] ${todoItem.content}` +
     (todoItem.description
       ? `\n${todoItem.description
           .split('\n')
@@ -162,14 +178,12 @@ export const parseTodoItemsFromMarkdown = (markdown: string) => {
       currentPool = [];
     }
 
-    const checked = !!(
-      match[1] &&
-      (match[1].trim() === 'x' || match[1].trim() === 'X')
-    );
+    const statusString = match[1]?.trim() ?? '';
+    const status = SYMBOL_TO_STATUS[statusString];
 
     todoItems.push(
       createItem({
-        checked,
+        status,
         content: match[2],
       })
     );

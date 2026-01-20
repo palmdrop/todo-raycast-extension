@@ -214,15 +214,17 @@ export const useTodo = (initialName?: string) => {
 
           const { item: previousItem, itemIndex } = itemData;
 
+          const newItem = {
+            ...previousItem,
+            ...(typeof item === 'function' ? item(previousItem) : item),
+            id: previousItem.id,
+          };
+
           const newSection = {
             ...previousSection,
             items: [
               ...previousSection.items.slice(0, itemIndex),
-              {
-                ...previousItem,
-                ...(typeof item === 'function' ? item(previousItem) : item),
-                id: previousItem.id,
-              },
+              newItem,
               ...previousSection.items.slice(itemIndex + 1),
             ],
           };
@@ -236,14 +238,41 @@ export const useTodo = (initialName?: string) => {
   );
 
   const toggleItem = useCallback(
-    (id: ItemUUID) => {
-      return updateItem(
-        (item) => ({
+    (id: ItemUUID, callback?: (item: TodoItem) => void) => {
+      return updateItem((item) => {
+        const status = ['checked', 'invalid'].includes(item.status)
+          ? 'unchecked'
+          : 'checked';
+
+        const newItem: TodoItem = {
           ...item,
-          checked: !item.checked,
-        }),
-        id
-      );
+          status,
+        };
+
+        callback?.(newItem);
+
+        return newItem;
+      }, id);
+    },
+    [update]
+  );
+
+  const toggleItemValid = useCallback(
+    (id: ItemUUID, callback?: (item: TodoItem) => void) => {
+      return updateItem((item) => {
+        const status = ['checked', 'unchecked'].includes(item.status)
+          ? 'invalid'
+          : 'unchecked';
+
+        const newItem: TodoItem = {
+          ...item,
+          status,
+        };
+
+        callback?.(newItem);
+
+        return newItem;
+      }, id);
     },
     [update]
   );
@@ -590,6 +619,7 @@ export const useTodo = (initialName?: string) => {
     commit,
     update,
     toggleItem,
+    toggleItemValid,
     updateItem,
     removeItem,
     addItem,

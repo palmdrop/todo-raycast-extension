@@ -28,12 +28,17 @@ export const getFilters = (tags?: string[]): Filters =>
     complete: {
       label: 'Complete',
       group: 'Status',
-      filter: (item: TodoItem) => item.checked,
+      filter: (item: TodoItem) => item.status === 'checked',
     },
     incomplete: {
       label: 'Incomplete',
       group: 'Status',
-      filter: (item: TodoItem) => !item.checked,
+      filter: (item: TodoItem) => item.status === 'unchecked',
+    },
+    invalid: {
+      label: 'Invalid',
+      group: 'Status',
+      filter: (item: TodoItem) => item.status === 'invalid',
     },
     'date-descending': {
       label: 'Due (descending)',
