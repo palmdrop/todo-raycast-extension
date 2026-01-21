@@ -30,7 +30,7 @@ type AdditionalProperties = keyof Omit<
 
 // TODO: store list data in the frontmatter, but make sure to preserve existing fields
 // TODO: and update "updatedAt" fields
-const removeFrontmatter = (content: string) => {
+export const removeFrontmatter = (content: string) => {
   const parts = content.split('---');
   return parts.at(-1)!.trim();
 };

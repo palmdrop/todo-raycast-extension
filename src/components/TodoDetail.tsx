@@ -45,7 +45,7 @@ export const TodoDetail = ({ item, parentSection }: Props) => {
           <List.Item.Detail.Metadata.Separator />
           {item.due && (
             <List.Item.Detail.Metadata.Label
-              title="Due Date"
+              title="Due"
               text={item.due?.toLocaleString()}
             />
           )}

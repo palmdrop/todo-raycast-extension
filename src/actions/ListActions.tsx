@@ -13,6 +13,7 @@ export type TodoListActionHandlers = {
   clearHistory: () => void;
   viewHistory: () => void;
   revaluate: () => void;
+  changeList: () => void;
 };
 
 type Props = {
@@ -110,6 +111,11 @@ export const ListActions = ({ showDetail, actionHandlers }: Props) => {
           onAction={actionHandlers.revaluate}
           icon={Icon.ArrowClockwise}
           shortcut={Keyboard.Shortcut.Common.Refresh}
+        />
+        <Action
+          title="Change List"
+          onAction={actionHandlers.changeList}
+          icon={Icon.List}
         />
       </ActionPanel.Section>
     </>

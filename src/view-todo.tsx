@@ -1,5 +1,7 @@
 import {
+  launchCommand,
   LaunchProps,
+  LaunchType,
   List,
   showToast,
   Toast,
@@ -193,6 +195,10 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
     );
   };
 
+  const changeList = () => {
+    launchCommand({ name: 'list-todos', type: LaunchType.UserInitiated });
+  };
+
   const getListActions = useCallback(
     (item: TodoItem | null, section: TodoSection) => (
       <ListActions
@@ -209,6 +215,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
           clearHistory,
           viewHistory,
           setShowDetail,
+          changeList,
         }}
       />
     ),

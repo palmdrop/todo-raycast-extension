@@ -1,14 +1,18 @@
-- [X] Create sections for history entries
+- [x] Create sections for history entries
   - by date
   - today, yesterday, 1 week ago, etc...
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+
+- [ ] Interact with dendron properly
+  use dendron cli https://wiki.dendron.so/notes/wti0omzx9zzfsfg67vc1kj0/ to update note metadata, create new notes, etc
+  * created: Tue Jan 20 2026 23:31:22 GMT+0100 (Central European Standard Time)
 
 - [ ] Add descriptions to sections
   and maybe link support?
   * created: Mon Jan 19 2026 19:25:05 GMT+0100 (Central European Standard Time)
   * tags: sections
 
-- [X] Description indentation only works for first line
+- [x] Description indentation only works for first line
   Fix!
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
@@ -22,30 +26,30 @@
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
   * tags: background
 
-- [X] Add filters
+- [x] Add filters
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Add a list view of history/changes (maybe even track a log of changes?)
+- [x] Add a list view of history/changes (maybe even track a log of changes?)
   - make it possible to revert to any point in history.
   - use detail markdown view to inspect the state of the history
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Show "empty" items in empty sections to make sure they are visible
+- [x] Show "empty" items in empty sections to make sure they are visible
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Add support for undo and redo by caching entire list
+- [x] Add support for undo and redo by caching entire list
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Cache TODO lists using raycast cache. Disallow change actions until cache is verified.
+- [x] Cache TODO lists using raycast cache. Disallow change actions until cache is verified.
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Allow default todo that is completely managed by the raycast cache
+- [x] Allow default todo that is completely managed by the raycast cache
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Conflict resolution: check when the file is cached and when it was last changed
+- [x] Conflict resolution: check when the file is cached and when it was last changed
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Parse headlines as sections
+- [x] Parse headlines as sections
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
 - [ ] Add priority?
@@ -53,14 +57,14 @@
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
   * tags: properties
 
-- [X] Do not add frontmatter if not already present? (check for undefined)
+- [x] Do not add frontmatter if not already present? (check for undefined)
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [ ] Allow crossing out todos, i.e marking them as invalid
+- [x] Allow crossing out todos, i.e marking them as invalid
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
   * tags: items
 
-- [X] Listen to file changes, update raycast live if file changes from other source.
+- [x] Listen to file changes, update raycast live if file changes from other source.
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
 - [ ] Show toolbar notification or sticky/popups for urgent todos
@@ -77,11 +81,11 @@
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
   * tags: history
 
-- [X] Display additional history data in detail
+- [x] Display additional history data in detail
   Such as date, etc
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
-- [X] Implement tagging system
+- [x] Implement tagging system
   fix edit view
   at the moment, tags cannot be added
   need an input field for adding and deleting tags
@@ -92,7 +96,7 @@
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
   * tags: backend
 
-- [X] Filter/group by tags
+- [x] Filter/group by tags
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
 - [ ] Implement todo dependencies
@@ -101,6 +105,12 @@
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
   * tags: dependencies
 
-- [X] Show toast when completing an item
+- [x] Show toast when completing an item
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
+
+- [ ] restore to backup
+  restore history to backup file, or vice versa
+  or create new todo from an existing history entry
+  * created: Wed Jan 21 2026 11:41:18 GMT+0100 (Central European Standard Time)
+  * tags: history
 

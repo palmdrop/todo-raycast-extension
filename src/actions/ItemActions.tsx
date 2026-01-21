@@ -26,7 +26,7 @@ export const ItemActions = ({ item, actionHandlers }: Props) => {
       <Action
         title={getStatusActionLabel(item.status)}
         onAction={() => actionHandlers.toggleItem()}
-        icon={getStatusActionIcon(item.status)}
+        icon={getStatusActionIcon(item.status)?.source}
       />
       <Action
         title="Edit Item"

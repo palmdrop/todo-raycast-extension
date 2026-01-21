@@ -1,5 +1,6 @@
 import {
   CHECK_ACTION_LABEL,
+  CHECK_ICON,
   CHECKED_ICON,
   CHECKED_LABEL,
   INVALID_ICON,
@@ -7,6 +8,7 @@ import {
   INVALIDATE_ACTION_LABEL,
   REVALIDATE_ACTION_LABEL,
   UNCHECK_ACTION_LABEL,
+  UNCHECK_ICON,
   UNCHECKED_ICON,
   UNCHECKED_LABEL,
 } from '../constants';
@@ -29,9 +31,9 @@ export const getStatusActionIcon = (status: ItemStatus) => {
   switch (status) {
     case 'checked':
     case 'invalid':
-      return UNCHECKED_ICON;
+      return UNCHECK_ICON;
     case 'unchecked':
-      return CHECKED_ICON;
+      return CHECK_ICON;
     default:
       return undefined;
   }

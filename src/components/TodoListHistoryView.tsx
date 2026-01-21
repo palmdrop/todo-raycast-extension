@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { getHistory, restoreTo } from '../core';
 import { useCachedPromise } from '@raycast/utils';
 import { HistoryEntry } from '../core/history';
+import { removeFrontmatter } from '../core/markdown';
 
 type Props = {
   name: string;
@@ -73,7 +74,7 @@ export const TodoListHistoryView = ({ name, onRestore }: Props) => {
         subtitle={subtitle}
         detail={
           <List.Item.Detail
-            markdown={entry.content}
+            markdown={removeFrontmatter(entry.content)}
             metadata={
               <List.Item.Detail.Metadata>
                 <List.Item.Detail.Metadata.Label

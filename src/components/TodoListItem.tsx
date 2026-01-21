@@ -12,6 +12,8 @@ type Props = {
   additionalActions?: React.ReactNode;
 };
 
+const MATCH_SPACE_OR_NEWLINE = /[\s\n]+/;
+
 export const TodoListItem = ({
   item,
   id,
@@ -25,6 +27,10 @@ export const TodoListItem = ({
       id={id}
       icon={getCurrentStatusIcon(item.status)}
       title={item.content}
+      keywords={[
+        ...(item.description ?? '').split(MATCH_SPACE_OR_NEWLINE),
+        ...item.tags,
+      ]}
       detail={<TodoDetail item={item} parentSection={parentSection} />}
       actions={
         <ActionPanel>

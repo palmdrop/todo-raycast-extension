@@ -10,6 +10,14 @@ export const UNCHECKED_ICON = {
   tintColor: Color.Red,
 };
 
+export const UNCHECK_ICON = {
+  source: Icon.Xmark,
+};
+
+export const CHECK_ICON = {
+  source: Icon.Check,
+};
+
 export const INVALID_ICON = {
   source: Icon.StrikeThrough,
   tintColor: Color.SecondaryText,
