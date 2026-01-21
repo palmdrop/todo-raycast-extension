@@ -6,17 +6,19 @@ import { ItemUUID, TodoList, TodoSection } from './types';
 export const getTodoList = async (
   name: string,
   shouldInitHistory = false
-): Promise<TodoList> => {
+): Promise<TodoList & { data: { content: string; filePath: string } }> => {
   if (!data.exists(name)) throw new Error(`Todo list "${name}" does not exist`);
 
   const todoListData = await data.readTodoList(name);
-  const { sections } = markdown.parseTodoItemsFromMarkdown(todoListData);
+  const { sections } = markdown.parseTodoItemsFromMarkdown(
+    todoListData.content
+  );
 
   if (shouldInitHistory) {
     await data.initHistory(name);
   }
 
-  return { name, sections };
+  return { name, sections, data: todoListData };
 };
 
 let writeLock: number | null = null;
@@ -41,9 +43,9 @@ export const updateTodoItems = async (
         .findIndex((item) => item.id === focusedItem)
     : null;
 
-  const currentContent = await data.readTodoList(name);
+  const currentList = await data.readTodoList(name);
 
-  const newContent = markdown.convertTodoListToMarkdown(currentContent, {
+  const newContent = markdown.convertTodoListToMarkdown(currentList.content, {
     name,
     sections,
   });

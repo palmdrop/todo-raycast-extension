@@ -40,6 +40,13 @@
           "placeholder": "name..."
         }
       ]
+    },
+    {
+      "name": "menu-bar",
+      "title": "Notifications",
+      "subtitle": "Todo",
+      "description": "See urgent todos",
+      "mode": "menu-bar"
     }
   ],
   "dependencies": {

@@ -17,11 +17,16 @@ export type TodoListActionHandlers = {
 };
 
 type Props = {
+  filePath: string | null;
   showDetail: boolean;
   actionHandlers: TodoListActionHandlers;
 };
 
-export const ListActions = ({ showDetail, actionHandlers }: Props) => {
+export const ListActions = ({
+  filePath,
+  showDetail,
+  actionHandlers,
+}: Props) => {
   return (
     <>
       <ActionPanel.Section title="New">
@@ -117,6 +122,13 @@ export const ListActions = ({ showDetail, actionHandlers }: Props) => {
           onAction={actionHandlers.changeList}
           icon={Icon.List}
         />
+        {filePath && (
+          <Action.Open
+            title="Open List File"
+            icon={Icon.Folder}
+            target={filePath}
+          />
+        )}
       </ActionPanel.Section>
     </>
   );

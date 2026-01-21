@@ -25,6 +25,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
 
   const {
     sections,
+    filePath,
     allTags,
     canUndo,
     canRedo,
@@ -202,6 +203,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
   const getListActions = useCallback(
     (item: TodoItem | null, section: TodoSection) => (
       <ListActions
+        filePath={filePath}
         showDetail={showDetail}
         actionHandlers={{
           onAdd: item ? (mode) => onAdd({ itemId: item.id, mode }) : undefined,
@@ -220,6 +222,7 @@ const ViewTodo = (props: LaunchProps<{ arguments: Arguments.ViewTodo }>) => {
       />
     ),
     [
+      filePath,
       showDetail,
       onAdd,
       onAddSection,

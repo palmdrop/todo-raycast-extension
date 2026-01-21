@@ -3,6 +3,11 @@
   - today, yesterday, 1 week ago, etc...
   * created: Mon Jan 19 2026 10:26:39 GMT+0100 (Central European Standard Time)
 
+- [ ] Make "before" and "after" visible and editable
+  as description for entire list, metadata, extra info, etc
+  * created: Wed Jan 21 2026 15:00:42 GMT+0100 (Central European Standard Time)
+  * tags: markdown
+
 - [ ] Interact with dendron properly
   use dendron cli https://wiki.dendron.so/notes/wti0omzx9zzfsfg67vc1kj0/ to update note metadata, create new notes, etc
   * created: Tue Jan 20 2026 23:31:22 GMT+0100 (Central European Standard Time)

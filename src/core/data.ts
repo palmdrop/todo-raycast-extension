@@ -3,7 +3,7 @@ import { existsSync, statSync } from 'fs';
 import fs from 'fs/promises';
 import * as history from './history';
 
-type TodoListData = {
+export type TodoListData = {
   name: string;
   filePath: string;
 };
@@ -61,7 +61,10 @@ const read = async (name: string) => {
     throw new Error(`Todo list with name "${name}" does not exist`);
   }
 
-  return await fs.readFile(todo.filePath, 'utf-8');
+  return {
+    filePath: todo.filePath,
+    content: await fs.readFile(todo.filePath, 'utf-8'),
+  };
 };
 
 const write = async (
@@ -226,7 +229,7 @@ export const redoTodoListChange = redo;
 export const initHistory = async (name: string) => {
   // TODO: cache read, session only. File is read twice during init otherwise
   const todo = await read(name);
-  await history.init(name, todo);
+  await history.init(name, todo.content);
 };
 
 export const clearHistory = async (name: string) => {

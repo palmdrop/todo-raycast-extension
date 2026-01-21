@@ -23,6 +23,8 @@ export const useTodo = (initialName?: string) => {
   const [name, setName] = useState(initialName);
   const [focusedItem, setFocusedItem] = useState<ItemUUID | null>(null);
   const [todoSections, setTodoSections] = useState<TodoSection[] | null>(null);
+  const [filePath, setFilePath] = useState<string | null>(null);
+
   const allTags = useMemo(() => {
     if (!todoSections) return [];
     const tags = new Set<string>(
@@ -55,10 +57,11 @@ export const useTodo = (initialName?: string) => {
       try {
         if (!name || init.aborted) return;
 
-        const { sections } = await core.getTodoList(name, true);
+        const { sections, data } = await core.getTodoList(name, true);
         if (init.aborted) return;
 
         setTodoSections(sections);
+        setFilePath(data.filePath);
       } catch (error: unknown) {
         console.error(error);
         showToast(
@@ -614,6 +617,7 @@ export const useTodo = (initialName?: string) => {
   return {
     name,
     sections: todoSections,
+    filePath,
     allTags,
     revaluate,
     commit,

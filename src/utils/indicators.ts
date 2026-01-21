@@ -47,8 +47,6 @@ export const getStatusLabel = (status: ItemStatus) => {
       return UNCHECKED_LABEL;
     case 'invalid':
       return INVALID_LABEL;
-    default:
-      return undefined;
   }
 };
 
